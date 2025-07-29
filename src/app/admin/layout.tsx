@@ -18,25 +18,25 @@ export default function AdminLayout({
   return (
     <SidebarProvider>
         <div className="flex min-h-screen w-full flex-col bg-muted/40">
-            <Sidebar>
+            <Sidebar collapsible="icon">
                 <SidebarHeader>
                     <Logo />
                 </SidebarHeader>
                 <SidebarContent>
                     <SidebarMenu>
                         <SidebarMenuItem>
-                            <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard'}>
+                            <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard'} tooltip="Dashboard">
                                 <Link href="/admin/dashboard">
                                     <Home />
-                                    Dashboard
+                                    <span>Dashboard</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                         <SidebarMenuItem>
-                            <SidebarMenuButton asChild isActive={pathname === '/admin/users'}>
+                            <SidebarMenuButton asChild isActive={pathname === '/admin/users'} tooltip="Users">
                                 <Link href="/admin/users">
                                     <Users />
-                                    Users
+                                    <span>Users</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>

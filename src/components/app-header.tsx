@@ -8,19 +8,9 @@ import { UserNav } from "@/components/user-nav";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
 import { Button } from "./ui/button";
-import { ArrowRight, PanelLeft } from "lucide-react";
-import { useSidebar } from "./ui/sidebar";
+import { ArrowRight } from "lucide-react";
+import { SidebarTrigger } from "./ui/sidebar";
 
-function AdminHeaderToggle() {
-    // This hook is now safe because this component is only rendered on admin pages
-    const { toggleSidebar } = useSidebar();
-    return (
-        <Button size="icon" variant="outline" className="sm:hidden" onClick={toggleSidebar}>
-            <PanelLeft className="h-5 w-5" />
-            <span className="sr-only">Toggle Menu</span>
-        </Button>
-    )
-}
 
 export function AppHeader({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -30,7 +20,7 @@ export function AppHeader({ className }: { className?: string }) {
   return (
     <header className={cn("sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6", className)}>
        {isAdminPage ? (
-            <AdminHeaderToggle />
+            <SidebarTrigger className="sm:hidden" />
        ) : (
             <Logo />
        )}
