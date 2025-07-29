@@ -1,0 +1,264 @@
+
+'use client';
+
+import { useEffect, useState } from 'react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  deleteDoc,
+  doc,
+  Timestamp,
+} from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatDistanceToNow } from 'date-fns';
+import { BarChart2, Eye, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+
+const ADMIN_EMAIL = 'loganathans@vmkvec.edu.in';
+
+type ExamData = {
+  id: string;
+  passPercentage: number;
+  title: string;
+  questionCount: number;
+  createdAt: Timestamp;
+};
+
+export default function AdminExamsPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [adminUser, setAdminUser] = useState<User | null>(null);
+  const [exams, setExams] = useState<ExamData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [examToDelete, setExamToDelete] = useState<ExamData | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        if (currentUser.email === ADMIN_EMAIL) {
+          setAdminUser(currentUser);
+        } else {
+          router.push('/dashboard');
+        }
+      } else {
+        router.push('/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
+  useEffect(() => {
+    if (adminUser) {
+      fetchExams();
+    }
+  }, [adminUser]);
+
+  const fetchExams = async () => {
+    setLoading(true);
+    try {
+      const examsQuery = query(collection(db, 'exams'), orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(examsQuery);
+      const fetchedExams = querySnapshot.docs.map(
+        (doc) =>
+          ({
+            id: doc.id,
+            ...doc.data(),
+          } as ExamData)
+      );
+      setExams(fetchedExams);
+    } catch (error) {
+      console.error('Error fetching exams:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to fetch exams.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteExam = async () => {
+    if (!examToDelete) return;
+
+    try {
+      await deleteDoc(doc(db, 'exams', examToDelete.id));
+      toast({
+        title: 'Success',
+        description: `Exam "${examToDelete.title}" has been deleted.`,
+      });
+      fetchExams(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting exam:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to delete the exam.',
+      });
+    } finally {
+      setExamToDelete(null);
+    }
+  };
+
+  if (!adminUser) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Existing Exams</CardTitle>
+          <CardDescription>
+            View, manage, and analyze all created exams.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Exam Title</TableHead>
+                <TableHead>Questions</TableHead>
+                <TableHead>Pass %</TableHead>
+                <TableHead className="hidden md:table-cell">Created</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-48" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-12" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-12" />
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-8 w-24" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : exams.length > 0 ? (
+                exams.map((exam) => (
+                  <TableRow key={exam.id}>
+                    <TableCell className="font-medium">{exam.title}</TableCell>
+                    <TableCell>{exam.questionCount}</TableCell>
+                    <TableCell>{exam.passPercentage}%</TableCell>
+                    <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                      {exam.createdAt
+                        ? formatDistanceToNow(exam.createdAt.toDate(), {
+                            addSuffix: true,
+                          })
+                        : 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Link href={`/admin/analytics/${exam.id}`}>
+                        <Button variant="outline" size="icon">
+                          <BarChart2 className="h-4 w-4" />
+                          <span className="sr-only">View Analytics</span>
+                        </Button>
+                      </Link>
+                      <Link href={`/admin/submissions?examId=${exam.id}`}>
+                        <Button variant="outline" size="icon">
+                          <Eye className="h-4 w-4" />
+                          <span className="sr-only">View Submissions</span>
+                        </Button>
+                      </Link>
+                      <AlertDialog
+                        open={!!examToDelete && examToDelete.id === exam.id}
+                        onOpenChange={(open) => !open && setExamToDelete(null)}
+                      >
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => setExamToDelete(exam)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Are you absolutely sure?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will
+                              permanently delete the exam{' '}
+                              <span className="font-bold">
+                                "{examToDelete?.title}"
+                              </span>{' '}
+                              and all associated data.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteExam}>
+                              Continue
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    No exams have been created yet.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

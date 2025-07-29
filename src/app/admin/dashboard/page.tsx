@@ -100,7 +100,6 @@ export default function AdminDashboardPage() {
   const [chartData, setChartData] = useState<any[]>([]);
   const [pieChartData, setPieChartData] = useState<any[]>([]);
   const [examsMap, setExamsMap] = useState<Record<string, ExamData>>({});
-  const [examToDelete, setExamToDelete] = useState<ExamData | null>(null);
   const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
 
 
@@ -308,21 +307,6 @@ export default function AdminDashboardPage() {
     reader.readAsArrayBuffer(file);
   };
   
-  const handleDeleteExam = async () => {
-    if (!examToDelete) return;
-
-    try {
-        await deleteDoc(doc(db, 'exams', examToDelete.id));
-        toast({ title: 'Success', description: `Exam "${examToDelete.title}" has been deleted.` });
-        fetchDashboardData(); // Refresh the list
-    } catch (error) {
-        console.error("Error deleting exam:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete the exam.' });
-    } finally {
-        setExamToDelete(null);
-    }
-  }
-
   const handleDeleteSubmission = async () => {
     if (!submissionToDelete) return;
 
@@ -352,16 +336,18 @@ export default function AdminDashboardPage() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 container mx-auto">
         <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
-          <Card className="shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Exams</CardTitle>
-              <ClipboardList className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalExams}</div>
-              <p className="text-xs text-muted-foreground">Active exams available to users</p>
-            </CardContent>
-          </Card>
+          <Link href="/admin/exams">
+            <Card className="shadow-sm hover:bg-muted/50 transition-colors">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Exams</CardTitle>
+                <ClipboardList className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalExams}</div>
+                <p className="text-xs text-muted-foreground">Active exams available to users</p>
+              </CardContent>
+            </Card>
+          </Link>
           <Link href="/admin/users">
             <Card className="shadow-sm hover:bg-muted/50 transition-colors">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -509,82 +495,6 @@ export default function AdminDashboardPage() {
             </Card>
         </div>
         
-        <div className="grid gap-4">
-            <Card className="shadow-sm">
-                <CardHeader>
-                    <CardTitle className="font-headline">Existing Exams</CardTitle>
-                    <CardDescription>View, edit, or delete existing exams.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Exam Title</TableHead>
-                                <TableHead>Questions</TableHead>
-                                <TableHead>Pass %</TableHead>
-                                <TableHead className="hidden md:table-cell">Created</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                           {Object.values(examsMap).length > 0 ? (
-                            Object.values(examsMap).map(exam => (
-                                <TableRow key={exam.id}>
-                                    <TableCell className="font-medium">{exam.title}</TableCell>
-                                    <TableCell>{exam.questionCount}</TableCell>
-                                    <TableCell>{exam.passPercentage}%</TableCell>
-                                    <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
-                                        {exam.createdAt ? formatDistanceToNow(exam.createdAt.toDate(), { addSuffix: true }) : 'N/A'}
-                                    </TableCell>
-                                    <TableCell className="text-right space-x-2">
-                                       <Link href={`/admin/analytics/${exam.id}`}>
-                                            <Button variant="outline" size="icon">
-                                                <BarChart2 className="h-4 w-4" />
-                                                <span className="sr-only">View Analytics</span>
-                                            </Button>
-                                       </Link>
-                                       <Link href={`/admin/submissions?examId=${exam.id}`}>
-                                            <Button variant="outline" size="icon">
-                                                <Eye className="h-4 w-4" />
-                                                <span className="sr-only">View Submissions</span>
-                                            </Button>
-                                       </Link>
-                                      <AlertDialog open={!!examToDelete && examToDelete.id === exam.id} onOpenChange={(open) => !open && setExamToDelete(null)}>
-                                          <AlertDialogTrigger asChild>
-                                             <Button variant="destructive" size="icon" onClick={() => setExamToDelete(exam)}>
-                                                <Trash2 className="h-4 w-4" />
-                                                <span className="sr-only">Delete</span>
-                                             </Button>
-                                          </AlertDialogTrigger>
-                                          <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                              <AlertDialogDescription>
-                                                This action cannot be undone. This will permanently delete the
-                                                exam <span className="font-bold">"{examToDelete?.title}"</span> and all associated data.
-                                              </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                              <AlertDialogAction onClick={handleDeleteExam}>Continue</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                          </AlertDialogContent>
-                                        </AlertDialog>
-                                    </TableCell>
-                                </TableRow>
-                             ))
-                           ) : (
-                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8">No exams have been created yet.</TableCell>
-                             </TableRow>
-                           )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        </div>
-
-
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
           <Card className="shadow-sm">
             <CardHeader>

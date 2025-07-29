@@ -5,7 +5,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, query, where, orderBy, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -38,6 +38,7 @@ type Exam = {
 function SubmissionsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [adminUser, setAdminUser] = useState<User | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,10 +123,10 @@ function SubmissionsContent() {
     <div className="container mx-auto py-8">
         {examIdFilter && (
              <div className="mb-4">
-                <Link href="/admin/dashboard">
+                <Link href="/admin/exams">
                     <Button variant="outline">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Dashboard
+                        Back to Exams
                     </Button>
                 </Link>
             </div>
