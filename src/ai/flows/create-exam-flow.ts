@@ -3,40 +3,22 @@
  * @fileOverview An AI flow for creating and processing exams from an uploaded file.
  *
  * - createExamFromQuestions - A function that handles parsing questions, splitting them into sets, and saving them as an exam.
- * - CreateExamInput - The input type for the createExamFromQuestions function.
- * - CreateExamOutput - The return type for the createExamFromQuestions function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
 import * as xlsx from 'xlsx';
 import { doc, setDoc, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { 
+    QuestionSchema, 
+    CreateExamInputSchema,
+    CreateExamOutputSchema,
+    type CreateExamInput,
+    type CreateExamOutput,
+    type Question
+} from '@/ai/flows/types';
+import { z } from 'zod';
 
-// Define the structure for a single question
-const QuestionSchema = z.object({
-  id: z.string().describe('A unique identifier for the question.'),
-  question: z.string().describe('The text of the question.'),
-  options: z.array(z.string()).describe('A list of possible answers.'),
-  correctAnswer: z.string().describe('The correct answer from the options.'),
-});
-export type Question = z.infer<typeof QuestionSchema>;
-
-// Define the input schema for creating an exam
-export const CreateExamInputSchema = z.object({
-  title: z.string().describe('The title of the exam.'),
-  description: z.string().describe('A brief description of the exam.'),
-  duration: z.number().describe('The duration of the exam in minutes.'),
-  fileData: z.string().describe("The base64 encoded content of the Excel file containing the questions. The file should have columns: 'Question', 'Option A', 'Option B', 'Option C', 'Option D', 'Correct Answer'."),
-});
-export type CreateExamInput = z.infer<typeof CreateExamInputSchema>;
-
-// Define the output schema
-export const CreateExamOutputSchema = z.object({
-    examId: z.string(),
-    message: z.string(),
-});
-export type CreateExamOutput = z.infer<typeof CreateExamOutputSchema>;
 
 // Exported wrapper function to be called from the frontend
 export async function createExamFromQuestions(input: CreateExamInput): Promise<CreateExamOutput> {
@@ -89,6 +71,7 @@ const createExamFlow = ai.defineFlow(
 
     for (let i = 0; i < 5; i++) {
         const start = i * questionsPerSet;
+        if (start >= totalQuestions) break;
         const end = start + questionsPerSet;
         questionSets[`set${i + 1}`] = structuredQuestions.slice(start, end);
     }

@@ -37,7 +37,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { createExamFromQuestions, CreateExamInput } from '@/ai/flows/create-exam-flow';
+import { createExamFromQuestions } from '@/ai/flows/create-exam-flow';
+import type { CreateExamInput } from '@/ai/flows/types';
 
 const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
 
