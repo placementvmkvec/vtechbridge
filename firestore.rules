@@ -3,17 +3,34 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Users can only read and write their own profile
-    match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+    // Helper function to check for admin via UID.
+    // Replace 'YOUR_ADMIN_UID_HERE' with the actual UID of the admin user.
+    // You can find the UID in the Firebase Authentication console.
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == "7S5t2bQ4jZXZc6f0g2e9k1Y5hI22";
     }
 
-    // Authenticated users can read exams. 
-    // Only the admin can create, update, or delete exams.
+    // Rules for user profiles
+    match /users/{userId} {
+      // Allow users to create their own profile
+      allow create: if request.auth != null;
+      // Allow users to read and update their own profile
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Rules for exams
     match /exams/{examId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.email == 'loganathans@vmkvec.edu.in';
+        // Only admins can create, update, or delete exams
+        allow write: if isAdmin();
+        // Any authenticated user can read exams
+        allow read: if request.auth != null;
+    }
+
+     match /submissions/{submissionId} {
+      // Users can create their own submissions
+      allow create: if request.auth != null;
+      // Users can only read their own submissions, admins can read all
+      allow read: if (request.auth != null && request.resource.data.userId == request.auth.uid) || isAdmin();
     }
   }
 }
