@@ -265,13 +265,12 @@ export default function ExamAnalyticsPage() {
             doc.text(splitText, 14, 48);
         }
         
-        let yPos = aiAnalysis?.analysisSummary ? doc.splitTextToSize(aiAnalysis.analysisSummary, 180).length * 4 + 60 : 40;
-
-        // Add Question Performance Table
-        doc.setFontSize(14);
-        doc.text("Question Performance", 14, yPos);
+        // --- PAGE 2: Question Performance ---
+        doc.addPage();
+        doc.setFontSize(18);
+        doc.text("Question Performance Analysis", 14, 22);
         (doc as any).autoTable({
-            startY: yPos + 5,
+            startY: 30,
             head: [['Question', 'Correct', 'Incorrect', 'Success Rate']],
             body: analytics.map(q => [
                 q.questionText.substring(0, 50) + (q.questionText.length > 50 ? '...' : ''), 
@@ -281,13 +280,12 @@ export default function ExamAnalyticsPage() {
             ]),
         });
         
-        yPos = (doc as any).autoTable.previous.finalY + 15;
-
-        // Add Student Performance Table
-        doc.setFontSize(14);
-        doc.text("Student Performance", 14, yPos);
+        // --- PAGE 3: Student Performance ---
+        doc.addPage();
+        doc.setFontSize(18);
+        doc.text("Student Performance Analysis", 14, 22);
          (doc as any).autoTable({
-            startY: yPos + 5,
+            startY: 30,
             head: [['Student Name', 'Email', 'Score (%)', 'Status']],
             body: studentSubmissions.map(s => [
                 s.userName,
@@ -518,5 +516,3 @@ export default function ExamAnalyticsPage() {
         </div>
     );
 }
-
-    
