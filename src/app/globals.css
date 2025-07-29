@@ -65,7 +65,7 @@
   }
   body {
     @apply bg-background text-foreground font-body;
-    background-image: linear-gradient(to top, #dfe9f3 0%, white 100%);
+    background-image: linear-gradient(to right, #E5E7EB, #DDD6FE);
   }
   .dark body {
     background-image: linear-gradient(to right top, #051937, #004d7a, #008793, #00bf72, #a8eb12);
