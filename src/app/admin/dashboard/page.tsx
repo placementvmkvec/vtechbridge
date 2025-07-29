@@ -4,7 +4,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc, collection } from 'firebase/firestore';
 import { AppHeader } from "@/components/app-header";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -37,8 +38,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { createExamFromQuestions } from '@/ai/flows/create-exam-flow';
-import type { CreateExamInput } from '@/ai/flows/types';
+import * as xlsx from 'xlsx';
 
 const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
 
@@ -48,6 +48,14 @@ const chartConfig = {
   failed: { label: "Failed", color: "hsl(var(--chart-2))" },
 } satisfies ChartConfig;
 const pieChartData: any[] = [];
+
+type Question = {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: string;
+};
+
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -74,40 +82,94 @@ export default function AdminDashboardPage() {
   const handleCreateExam = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsCreatingExam(true);
+    
     const formData = new FormData(e.currentTarget);
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
     const duration = Number(formData.get('duration'));
     const file = formData.get('questions-file') as File;
+    const numSets = Number(formData.get('numSets'));
+    const questionsPerSet = Number(formData.get('questionsPerSet'));
 
-    if (!file) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Please select a question file.' });
+    if (!file || !title || !duration || !numSets || !questionsPerSet) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please fill out all fields.' });
       setIsCreatingExam(false);
       return;
     }
 
-    try {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        if (event.target?.result) {
-          const fileData = (event.target.result as string).split(',')[1];
-          const input: CreateExamInput = { title, description, duration, fileData };
-          const result = await createExamFromQuestions(input);
-          toast({ title: 'Success!', description: result.message });
-          e.currentTarget.reset();
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        if (!event.target?.result) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to read the file.' });
+            return;
         }
-      };
-      reader.onerror = (error) => {
+        
+        const fileData = event.target.result;
+        const workbook = xlsx.read(fileData, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const rawQuestions: any[] = xlsx.utils.sheet_to_json(worksheet);
+
+        if (rawQuestions.length === 0) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No questions found in the file.' });
+            return;
+        }
+
+        const totalRequiredQuestions = numSets * questionsPerSet;
+        if (rawQuestions.length < totalRequiredQuestions) {
+             toast({ variant: 'destructive', title: 'Error', description: `Not enough questions in file. Required: ${totalRequiredQuestions}, Found: ${rawQuestions.length}` });
+             return;
+        }
+
+        const structuredQuestions: Question[] = rawQuestions.map((q, index) => ({
+            id: `q_${index + 1}`,
+            question: q['Question'] || '',
+            options: [q['Option A'], q['Option B'], q['Option C'], q['Option D']].filter(opt => opt),
+            correctAnswer: q['Correct Answer'] || ''
+        }));
+        
+        // Shuffle questions to randomize set creation
+        const shuffledQuestions = structuredQuestions.sort(() => 0.5 - Math.random());
+
+        const questionSets: Record<string, Question[]> = {};
+        let questionIndex = 0;
+        for (let i = 0; i < numSets; i++) {
+            const setKey = `set${i + 1}`;
+            questionSets[setKey] = shuffledQuestions.slice(questionIndex, questionIndex + questionsPerSet);
+            questionIndex += questionsPerSet;
+        }
+        
+        const examsCollectionRef = collection(db, 'exams');
+        const newExamRef = doc(examsCollectionRef);
+        const examId = newExamRef.id;
+
+        await setDoc(newExamRef, {
+            id: examId,
+            title: title,
+            description: description,
+            duration: duration,
+            questionCount: questionsPerSet, // Now it's questions per set
+            questionSets: questionSets,
+            createdAt: new Date(),
+        });
+        
+        toast({ title: 'Success!', description: `Successfully created exam with ${numSets} sets of ${questionsPerSet} questions.` });
+        e.currentTarget.reset();
+
+      } catch (error: any) {
+        console.error('Error creating exam:', error);
+        toast({ variant: 'destructive', title: 'Exam Creation Failed', description: error.message });
+      } finally {
+        setIsCreatingExam(false);
+      }
+    };
+    reader.onerror = (error) => {
         console.error("FileReader error:", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to read the file.' });
-      };
-      reader.readAsDataURL(file);
-    } catch (error: any) {
-      console.error('Error creating exam:', error);
-      toast({ variant: 'destructive', title: 'Exam Creation Failed', description: error.message });
-    } finally {
-      setIsCreatingExam(false);
-    }
+        setIsCreatingExam(false);
+    };
+    reader.readAsArrayBuffer(file);
   };
   
   const isAdmin = user?.email === ADMIN_EMAIL;
@@ -161,7 +223,7 @@ export default function AdminDashboardPage() {
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle className="font-headline flex items-center gap-2"><Upload className="h-5 w-5" /> Create New Exam</CardTitle>
-              <CardDescription>Upload an Excel file with questions to create a new exam.</CardDescription>
+              <CardDescription>Upload an Excel file and configure the question sets.</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCreateExam} className="space-y-4">
@@ -173,10 +235,20 @@ export default function AdminDashboardPage() {
                   <Label htmlFor="description">Description</Label>
                   <Textarea id="description" name="description" placeholder="A short description of the exam." />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="duration">Duration (in minutes)</Label>
-                  <Input id="duration" name="duration" type="number" required placeholder="e.g., 60" />
-                </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="duration">Duration (minutes)</Label>
+                      <Input id="duration" name="duration" type="number" required placeholder="e.g., 60" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="numSets">Number of Sets</Label>
+                      <Input id="numSets" name="numSets" type="number" required placeholder="e.g., 5" />
+                    </div>
+                 </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="questionsPerSet">Questions Per Set</Label>
+                    <Input id="questionsPerSet" name="questionsPerSet" type="number" required placeholder="e.g., 20" />
+                  </div>
                 <div className="space-y-2">
                   <Label htmlFor="questions-file">Questions File (.xlsx)</Label>
                   <Input id="questions-file" name="questions-file" type="file" required accept=".xlsx" />
