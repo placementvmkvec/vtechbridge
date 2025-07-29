@@ -26,7 +26,7 @@ import {
   ChartLegendContent
 } from "@/components/ui/chart";
 import { MOCK_EXAMS, MOCK_USER_RESULTS } from "@/lib/mock-data";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend, ResponsiveContainer, Pie, PieChart, Cell } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Pie, PieChart, Cell } from "recharts";
 import { ClipboardList, Users, CheckCircle } from "lucide-react";
 
 const chartData = [
@@ -54,11 +54,11 @@ const pieChartData = [
 
 export default function AdminDashboardPage() {
   return (
-    <div className="flex min-h-screen w-full flex-col">
+    <div className="flex min-h-screen w-full flex-col bg-secondary">
       <AppHeader />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
-          <Card className="shadow-lg">
+          <Card className="shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Exams</CardTitle>
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
@@ -70,7 +70,7 @@ export default function AdminDashboardPage() {
               </p>
             </CardContent>
           </Card>
-          <Card className="shadow-lg">
+          <Card className="shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
@@ -82,7 +82,7 @@ export default function AdminDashboardPage() {
               </p>
             </CardContent>
           </Card>
-          <Card className="shadow-lg">
+          <Card className="shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Submissions Today
@@ -98,7 +98,7 @@ export default function AdminDashboardPage() {
           </Card>
         </div>
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
-            <Card className="shadow-lg">
+            <Card className="shadow-sm">
                  <CardHeader>
                     <CardTitle className="font-headline">Pass/Fail Rate Overview</CardTitle>
                     <CardDescription>A look at pass vs fail rates across all exams.</CardDescription>
@@ -113,13 +113,13 @@ export default function AdminDashboardPage() {
                                     ))}
                                 </Pie>
                                 <ChartTooltip content={<ChartTooltipContent />} />
-                                <Legend content={<ChartLegendContent />} />
+                                <ChartLegend content={<ChartLegendContent />} />
                             </PieChart>
                         </ResponsiveContainer>
                     </ChartContainer>
                 </CardContent>
             </Card>
-            <Card className="shadow-lg">
+            <Card className="shadow-sm">
                  <CardHeader>
                     <CardTitle className="font-headline">Exam Performance</CardTitle>
                      <CardDescription>Comparison of pass/fail counts for different exams.</CardDescription>
@@ -145,7 +145,7 @@ export default function AdminDashboardPage() {
                 </CardContent>
             </Card>
         </div>
-        <Card className="shadow-lg">
+        <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="font-headline">Recent Submissions</CardTitle>
           </CardHeader>
@@ -172,7 +172,7 @@ export default function AdminDashboardPage() {
                       {result.exam}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={parseInt(result.score) > 80 ? 'default' : 'destructive' } className={parseInt(result.score) > 80 ? 'bg-green-600' : ''}>
+                      <Badge variant={parseInt(result.score) > 80 ? 'default' : 'destructive' } className={parseInt(result.score) > 80 ? 'bg-green-500 text-white' : ''}>
                         {result.score}
                       </Badge>
                     </TableCell>

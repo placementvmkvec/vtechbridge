@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from 'next/navigation';
@@ -72,8 +73,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm shadow-2xl bg-card/80 backdrop-blur-sm">
+    <div className="flex min-h-screen items-center justify-center p-4 bg-secondary">
+      <Card className="w-full max-w-sm shadow-2xl">
         <form onSubmit={handleLogin}>
           <CardHeader className="space-y-4 text-center">
             <div className="flex justify-center">
@@ -101,12 +102,22 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-             <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground transition-transform transform hover:scale-105">
+             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105">
               Login as User
             </Button>
-            <Button onClick={handleAdminLogin} variant="outline" className="w-full">
+            <Button onClick={handleAdminLogin} variant="secondary" className="w-full">
               Login as Admin
             </Button>
+            <div className="relative w-full">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
             <Button variant="outline" className="w-full" onClick={handleGoogleLogin}>
                 <GoogleIcon className="mr-2 h-5 w-5" />
                 Sign in with Google

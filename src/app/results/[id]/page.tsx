@@ -40,8 +40,8 @@ export default function ResultsPage({ params, searchParams }: ResultsPageProps) 
   const seconds = timeTaken % 60;
 
   const getPerformanceMessage = () => {
-    if (percentage >= 90) return { message: "Excellent work!", icon: <Award className="h-16 w-16 text-yellow-500" />, color: "text-green-500" };
-    if (percentage >= 70) return { message: "Great job!", icon: <Award className="h-16 w-16 text-slate-400" />, color: "text-green-500" };
+    if (percentage >= 90) return { message: "Excellent work!", icon: <Award className="h-16 w-16 text-yellow-400" />, color: "text-primary" };
+    if (percentage >= 70) return { message: "Great job!", icon: <Award className="h-16 w-16 text-slate-500" />, color: "text-primary" };
     if (percentage >= 50) return { message: "Good effort!", icon: <CheckCircle className="h-16 w-16 text-primary" />, color: "text-yellow-600" };
     return { message: "Keep practicing!", icon: <XCircle className="h-16 w-16 text-destructive" />, color: "text-destructive" };
   };
@@ -49,9 +49,9 @@ export default function ResultsPage({ params, searchParams }: ResultsPageProps) 
   const performance = getPerformanceMessage();
 
   return (
-    <div className="min-h-screen w-full flex flex-col">
+    <div className="min-h-screen w-full flex flex-col bg-secondary">
       <AppHeader />
-      <main className="flex-1 flex items-center justify-center bg-muted/30 p-4">
+      <main className="flex-1 flex items-center justify-center p-4">
         <Card className="w-full max-w-2xl shadow-2xl text-center">
           <CardHeader>
             <div className="mx-auto my-4">{performance.icon}</div>
@@ -84,7 +84,7 @@ export default function ResultsPage({ params, searchParams }: ResultsPageProps) 
           </CardContent>
           <CardFooter className="flex justify-center">
             <Link href="/dashboard">
-              <Button size="lg" className="bg-accent hover:bg-accent/90">
+              <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                 <Home className="mr-2 h-4 w-4" /> Go to Dashboard
               </Button>
             </Link>

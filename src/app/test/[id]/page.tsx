@@ -1,6 +1,7 @@
 import { TestView } from "@/components/test-view";
 import { MOCK_EXAMS } from "@/lib/mock-data";
 import { notFound } from 'next/navigation';
+import { AppHeader } from "@/components/app-header";
 
 type TestPageProps = {
   params: {
@@ -15,5 +16,10 @@ export default function TestPage({ params }: TestPageProps) {
     notFound();
   }
 
-  return <TestView exam={exam} />;
+  return (
+    <div className="min-h-screen w-full flex flex-col bg-secondary">
+      <AppHeader />
+      <TestView exam={exam} />
+    </div>
+  );
 }

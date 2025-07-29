@@ -18,7 +18,6 @@ import { Progress } from "@/components/ui/progress";
 import { Clock, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -97,7 +96,7 @@ export function TestView({ exam }: { exam: Exam }) {
   const timerColor = timeLeft < 60 ? 'text-destructive' : 'text-foreground';
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-muted/40">
+    <div className="relative flex flex-1 flex-col">
        <AlertDialog open={isSubmitting}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -112,26 +111,27 @@ export function TestView({ exam }: { exam: Exam }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <header className="sticky top-0 z-10 w-full border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex items-center justify-between">
-          <h1 className="font-headline text-xl md:text-2xl font-bold truncate">{exam.title}</h1>
-          <div className={`flex items-center gap-2 font-mono text-lg font-bold ${timerColor}`}>
+      <div className="container mx-auto flex items-center justify-between p-4 border-b">
+          <div className="w-full">
+            <div className="flex justify-between mb-1">
+                <span className="text-base font-medium text-primary">Progress</span>
+                <span className="text-sm font-medium text-primary">{currentQuestionIndex + 1} / {exam.questionCount}</span>
+            </div>
+            <Progress value={progress} className="w-full h-2" />
+          </div>
+          <div className={`flex items-center gap-2 font-mono text-lg font-bold ${timerColor} ml-8`}>
             <Clock className="h-5 w-5" />
             <span>{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}</span>
           </div>
         </div>
-        <div className="container mx-auto mt-2">
-            <Progress value={progress} className="w-full" />
-        </div>
-      </header>
       
       <main className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-3xl shadow-2xl">
+        <Card className="w-full max-w-3xl shadow-xl border-t-4 border-primary">
           <CardHeader>
             <CardTitle className="text-lg md:text-xl">
-              Question {currentQuestionIndex + 1} of {exam.questionCount}
+              Question {currentQuestionIndex + 1}
             </CardTitle>
-            <CardDescription className="text-base md:text-lg pt-2 min-h-[60px]">
+            <CardDescription className="text-lg md:text-xl pt-4 min-h-[60px] text-foreground">
               {currentQuestion.question}
             </CardDescription>
           </CardHeader>
@@ -142,7 +142,7 @@ export function TestView({ exam }: { exam: Exam }) {
               className="space-y-4"
             >
               {currentQuestion.options.map((option, index) => (
-                <div key={index} className="flex items-center space-x-3 rounded-md border p-4 hover:bg-muted/50 has-[[data-state=checked]]:bg-secondary has-[[data-state=checked]]:border-primary transition-colors">
+                <div key={index} className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-secondary has-[[data-state=checked]]:bg-primary/10 has-[[data-state=checked]]:border-primary transition-colors cursor-pointer">
                   <RadioGroupItem value={option} id={`q${currentQuestion.id}-o${index}`} />
                   <Label htmlFor={`q${currentQuestion.id}-o${index}`} className="text-base font-normal flex-1 cursor-pointer">
                     {option}
@@ -151,16 +151,16 @@ export function TestView({ exam }: { exam: Exam }) {
               ))}
             </RadioGroup>
           </CardContent>
-          <CardFooter className="flex justify-between">
+          <CardFooter className="flex justify-between mt-6">
             <Button variant="outline" onClick={handlePrev} disabled={currentQuestionIndex === 0}>
               <ChevronLeft className="mr-2 h-4 w-4" /> Previous
             </Button>
             {isLastQuestion ? (
-              <Button onClick={handleSubmit} className="bg-accent hover:bg-accent/90">
+              <Button onClick={handleSubmit} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                 Submit Test <CheckCircle className="ml-2 h-4 w-4" />
               </Button>
             ) : (
-              <Button onClick={handleNext}>
+              <Button onClick={handleNext} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                 Next <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             )}

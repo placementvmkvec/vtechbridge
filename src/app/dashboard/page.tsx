@@ -14,11 +14,11 @@ import { Clock, FileText, ArrowRight } from "lucide-react";
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen w-full flex flex-col">
+    <div className="min-h-screen w-full flex flex-col bg-secondary">
       <AppHeader />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="mb-8">
-          <h1 className="font-headline text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Welcome Back, User!</h1>
+          <h1 className="font-headline text-3xl md:text-4xl font-bold">Welcome Back, User!</h1>
           <p className="text-muted-foreground mt-2">Here are your available exams. Good luck!</p>
         </div>
 
@@ -27,7 +27,7 @@ export default function DashboardPage() {
             <div key={exam.id} className="flip-card h-[280px]">
               <div className="flip-card-inner">
                 <div className="flip-card-front">
-                   <Card className="flex flex-col h-full">
+                   <Card className="flex flex-col h-full shadow-lg border-transparent hover:border-primary transition-colors">
                     <CardHeader>
                       <CardTitle className="font-headline text-xl">{exam.title}</CardTitle>
                     </CardHeader>
@@ -47,10 +47,10 @@ export default function DashboardPage() {
                   </Card>
                 </div>
                 <div className="flip-card-back">
-                   <Card className="flex flex-col h-full bg-secondary">
+                   <Card className="flex flex-col h-full bg-card shadow-lg border-primary">
                       <CardHeader>
                         <CardTitle className="font-headline text-xl">{exam.title}</CardTitle>
-                        <CardDescription className="text-secondary-foreground/80">{exam.description}</CardDescription>
+                        <CardDescription>{exam.description}</CardDescription>
                       </CardHeader>
                       <CardContent className="flex-grow" />
                       <CardFooter>
