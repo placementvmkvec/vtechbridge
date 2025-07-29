@@ -3,37 +3,39 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check for Admin role
+    // Helper functions
     function isAdmin() {
-      return request.auth.token.email == "loganathans@vmkvec.edu.in";
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true || request.auth.token.email == "loganathans@vmkvec.edu.in";
     }
 
-    // Rules for 'users' collection
-    match /users/{userId} {
-      // Allow users to read/write their own data, and admins to read any user data
-      allow read: if request.auth.uid == userId || isAdmin();
-      allow write: if request.auth.uid == userId;
-    }
-
-    // Rules for 'exams' collection
-    match /exams/{examId} {
-        // Any authenticated user can read exams
-        allow read: if request.auth != null;
-        // Only admin can create, update, or delete exams
-        allow write: if isAdmin();
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
     
-    // Rules for 'submissions' collection
-    match /submissions/{submissionId} {
-        // Admins can read all submissions.
-        // Users can only read their own submissions.
-        allow read: if isAdmin() || request.auth.uid == resource.data.userId;
+    // Users Collection
+    // - Allow users to read and update their own profile.
+    // - Admin can read any user profile.
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId);
+    }
 
-        // Any authenticated user can create a submission.
-        allow create: if request.auth != null;
-        
-        // Users cannot update or delete submissions.
-        allow update, delete: if false;
+    // Exams Collection
+    // - Any authenticated user can read exams.
+    // - Only admins can create, update, or delete exams.
+    match /exams/{examId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    
+    // Submissions Collection
+    // - Users can create their own submission.
+    // - Users can read their own submissions.
+    // - Admins can read all submissions.
+    match /submissions/{submissionId} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == resource.data.userId);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if false; // Submissions are immutable
     }
   }
 }

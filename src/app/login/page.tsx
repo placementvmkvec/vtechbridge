@@ -19,6 +19,7 @@ import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -27,7 +28,7 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
         xmlns="http://www.w3.org/2000/svg"
         width="24"
         height="24"
-        viewBox="0 0 24 24"
+        viewBox="0 0 24"
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
@@ -48,9 +49,12 @@ const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleUserLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsLoading(true);
     const email = e.currentTarget.email.value;
     const password = e.currentTarget.password.value;
     try {
@@ -63,11 +67,14 @@ export default function LoginPage() {
           title: 'Login Failed',
           description: error.message,
       });
+    } finally {
+        setIsLoading(false);
     }
   };
   
   const handleAdminLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsLoading(true);
     const email = e.currentTarget.email.value;
     const password = e.currentTarget.password.value;
     
@@ -77,6 +84,7 @@ export default function LoginPage() {
           title: 'Login Failed',
           description: "This email is not registered as an admin.",
         });
+        setIsLoading(false);
         return;
     }
 
@@ -90,10 +98,13 @@ export default function LoginPage() {
           title: 'Admin Login Failed',
           description: error.message,
       });
+    } finally {
+        setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
     try {
       await signInWithPopup(auth, googleProvider);
       router.push('/dashboard');
@@ -104,6 +115,8 @@ export default function LoginPage() {
           title: 'Google Login Failed',
           description: error.message,
       });
+    } finally {
+        setIsGoogleLoading(false);
     }
   };
 
@@ -148,8 +161,8 @@ export default function LoginPage() {
                         </div>
                     </CardContent>
                     <CardFooter className="flex flex-col gap-4">
-                        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105">
-                        Login
+                        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105" disabled={isLoading}>
+                        {isLoading ? 'Logging in...' : 'Login'}
                         </Button>
                         <div className="relative w-full">
                         <div className="absolute inset-0 flex items-center">
@@ -161,9 +174,9 @@ export default function LoginPage() {
                             </span>
                         </div>
                         </div>
-                        <Button variant="outline" type="button" className="w-full" onClick={handleGoogleLogin}>
+                        <Button variant="outline" type="button" className="w-full" onClick={handleGoogleLogin} disabled={isGoogleLoading}>
                             <GoogleIcon className="mr-2 h-5 w-5" />
-                            Sign in with Google
+                            {isGoogleLoading ? 'Signing in...' : 'Sign in with Google'}
                         </Button>
                         <p className="text-center text-sm text-muted-foreground">
                         {"Don't have an account? "}
@@ -205,8 +218,8 @@ export default function LoginPage() {
                         </div>
                     </CardContent>
                     <CardFooter className="flex flex-col gap-4">
-                        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105">
-                         Login as Admin
+                        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105" disabled={isLoading}>
+                         {isLoading ? 'Logging in...' : 'Login as Admin'}
                         </Button>
                     </CardFooter>
                 </form>

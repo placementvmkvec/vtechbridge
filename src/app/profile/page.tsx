@@ -41,7 +41,6 @@ export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile>({});
   
   const [displayName, setDisplayName] = useState('');
   const [regNo, setRegNo] = useState('');
@@ -61,7 +60,6 @@ export default function ProfilePage() {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
             const userData = userDoc.data() as UserProfile;
-            setProfile(userData);
             setDisplayName(currentUser.displayName || userData.name || '');
             setRegNo(userData.regNo || '');
             setDepartment(userData.department || '');
@@ -168,17 +166,17 @@ export default function ProfilePage() {
             <CardHeader>
               <CardTitle className="font-headline text-3xl">My Profile</CardTitle>
               <CardDescription>
-                View and edit your personal information.
+                View and edit your personal information. Keep it up to date.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
               <div className="flex items-center space-x-6">
                 <Avatar className="h-24 w-24 border-2 border-primary">
                   <AvatarImage src={user?.photoURL ?? "https://placehold.co/100x100"} alt={user?.displayName ?? ""} data-ai-hint="user avatar" />
-                  <AvatarFallback className="text-3xl">{displayName?.charAt(0) ?? 'U'}</AvatarFallback>
+                  <AvatarFallback className="text-3xl">{displayName?.charAt(0)?.toUpperCase() ?? 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="space-y-1">
-                    <h2 className="text-2xl font-bold">{displayName}</h2>
+                    <h2 className="text-2xl font-bold">{displayName || "User"}</h2>
                     <p className="text-muted-foreground">{user?.email}</p>
                 </div>
               </div>
@@ -191,6 +189,7 @@ export default function ProfilePage() {
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
                         className="text-base"
+                        placeholder="Your full name"
                     />
                 </div>
                  <div className="space-y-2">
@@ -200,6 +199,7 @@ export default function ProfilePage() {
                         value={regNo}
                         onChange={(e) => setRegNo(e.target.value)}
                         className="text-base"
+                        placeholder="e.g. U20XX1234"
                     />
                 </div>
                 <div className="space-y-2">
@@ -209,6 +209,7 @@ export default function ProfilePage() {
                         value={department}
                         onChange={(e) => setDepartment(e.target.value)}
                         className="text-base"
+                        placeholder="e.g. Computer Science"
                     />
                 </div>
                 <div className="space-y-2">

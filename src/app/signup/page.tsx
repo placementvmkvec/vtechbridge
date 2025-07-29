@@ -19,6 +19,7 @@ import { createUserWithEmailAndPassword, signInWithPopup, updateProfile } from '
 import { doc, setDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -27,7 +28,7 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
         xmlns="http://www.w3.org/2000/svg"
         width="24"
         height="24"
-        viewBox="0 0 24 24"
+        viewBox="0 0 24"
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
@@ -46,9 +47,13 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
 export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsLoading(true);
+
     const name = e.currentTarget.name.value;
     const regNo = e.currentTarget.regNo.value;
     const email = e.currentTarget.email.value;
@@ -61,6 +66,7 @@ export default function SignupPage() {
           title: 'Error',
           description: 'Passwords do not match.',
         });
+        setIsLoading(false);
         return;
     }
 
@@ -68,10 +74,8 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // Update profile display name
       await updateProfile(user, { displayName: name });
       
-      // Save user data to Firestore
       await setDoc(doc(db, "users", user.uid), {
         name: name,
         regNo: regNo,
@@ -91,20 +95,22 @@ export default function SignupPage() {
         title: 'Uh oh! Something went wrong.',
         description: error.message,
       });
+    } finally {
+        setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-      // You might want to check if the user already exists in your firestore db
-      // and handle merging or creating a new document accordingly.
+      
       await setDoc(doc(db, "users", user.uid), {
         name: user.displayName,
         email: user.email,
         regNo: '', // Google sign-in won't provide this
-      }, { merge: true }); // Merge to avoid overwriting existing data if any
+      }, { merge: true });
 
       router.push('/dashboard');
     } catch (error: any) {
@@ -114,6 +120,8 @@ export default function SignupPage() {
         title: 'Uh oh! Something went wrong.',
         description: error.message,
       });
+    } finally {
+        setIsGoogleLoading(false);
     }
   };
 
@@ -127,12 +135,12 @@ export default function SignupPage() {
             </div>
             <CardTitle className="font-headline text-3xl">Create an Account</CardTitle>
             <CardDescription>
-              Enter your details to create your account.
+              Enter your details to get started.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">Full Name</Label>
               <Input
                 id="name"
                 type="text"
@@ -171,8 +179,8 @@ export default function SignupPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105">
-              Sign Up
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105" disabled={isLoading}>
+              {isLoading ? 'Creating Account...' : 'Sign Up'}
             </Button>
             <div className="relative w-full">
               <div className="absolute inset-0 flex items-center">
@@ -184,9 +192,9 @@ export default function SignupPage() {
                 </span>
               </div>
             </div>
-            <Button variant="outline" className="w-full" type="button" onClick={handleGoogleLogin}>
+            <Button variant="outline" className="w-full" type="button" onClick={handleGoogleLogin} disabled={isGoogleLoading}>
                 <GoogleIcon className="mr-2 h-5 w-5" />
-                Sign up with Google
+                {isGoogleLoading ? 'Signing in...' : 'Sign up with Google'}
             </Button>
              <p className="text-center text-sm text-muted-foreground">
               {"Already have an account? "}

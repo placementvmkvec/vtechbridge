@@ -55,7 +55,7 @@ export default function DashboardPage() {
       <AppHeader />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="mb-8">
-          <h1 className="font-headline text-3xl md:text-4xl font-bold">Welcome Back, User!</h1>
+          <h1 className="font-headline text-3xl md:text-4xl font-bold">Welcome Back!</h1>
           <p className="text-muted-foreground mt-2">Here are your available exams. Good luck!</p>
         </div>
 
@@ -65,6 +65,7 @@ export default function DashboardPage() {
                 <Card key={index} className="h-[280px]">
                     <CardHeader>
                         <Skeleton className="h-6 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex items-center space-x-2">
@@ -77,7 +78,7 @@ export default function DashboardPage() {
                         </div>
                     </CardContent>
                     <CardFooter>
-                         <Skeleton className="h-4 w-32" />
+                         <Skeleton className="h-10 w-full" />
                     </CardFooter>
                 </Card>
              ))
@@ -101,7 +102,7 @@ export default function DashboardPage() {
                          </div>
                       </CardContent>
                        <CardFooter>
-                          <div className="text-sm text-primary font-semibold">Hover to see details</div>
+                          <div className="text-sm text-primary font-semibold">Hover to see details & start</div>
                        </CardFooter>
                     </Card>
                   </div>
@@ -125,8 +126,9 @@ export default function DashboardPage() {
               </div>
             ))
           ) : (
-            <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground">No exams available at the moment.</p>
+            <div className="col-span-full text-center py-12 bg-card rounded-lg">
+              <h2 className="text-xl font-semibold">No Exams Available</h2>
+              <p className="text-muted-foreground mt-2">Please check back later. Your administrator has not assigned any exams yet.</p>
             </div>
           )}
         </div>

@@ -115,7 +115,7 @@ export default function AdminDashboardPage() {
         
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const submissionsToday = fetchedSubmissions.filter(s => s.submittedAt.toDate() >= today).length;
+        const submissionsToday = fetchedSubmissions.filter(s => s.submittedAt && s.submittedAt.toDate() >= today).length;
 
         setStats({ totalExams, totalUsers, submissionsToday });
         
@@ -363,7 +363,7 @@ export default function AdminDashboardPage() {
                       </TableHeader>
                       <TableBody>
                         {submissions.length > 0 ? (
-                           submissions.map(sub => (
+                           submissions.slice(0, 10).map(sub => (
                                 <TableRow key={sub.id}>
                                     <TableCell>
                                         <div className="font-medium">{sub.userName}</div>
@@ -376,7 +376,7 @@ export default function AdminDashboardPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right text-xs text-muted-foreground">
-                                        {formatDistanceToNow(sub.submittedAt.toDate(), { addSuffix: true })}
+                                        {sub.submittedAt ? formatDistanceToNow(sub.submittedAt.toDate(), { addSuffix: true }) : 'Just now'}
                                     </TableCell>
                                 </TableRow>
                            ))
