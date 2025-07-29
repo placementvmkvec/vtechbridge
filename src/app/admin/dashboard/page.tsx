@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
@@ -63,6 +63,7 @@ export default function AdminDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCreatingExam, setIsCreatingExam] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -81,9 +82,12 @@ export default function AdminDashboardPage() {
 
   const handleCreateExam = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = formRef.current;
+    if (!form) return;
+    
     setIsCreatingExam(true);
     
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(form);
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
     const duration = Number(formData.get('duration'));
@@ -155,7 +159,7 @@ export default function AdminDashboardPage() {
         });
         
         toast({ title: 'Success!', description: `Successfully created exam with ${numSets} sets of ${questionsPerSet} questions.` });
-        e.currentTarget.reset();
+        form.reset();
 
       } catch (error: any) {
         console.error('Error creating exam:', error);
@@ -226,7 +230,7 @@ export default function AdminDashboardPage() {
               <CardDescription>Upload an Excel file and configure the question sets.</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleCreateExam} className="space-y-4">
+              <form ref={formRef} onSubmit={handleCreateExam} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Exam Title</Label>
                   <Input id="title" name="title" required placeholder="e.g., Mid-term Examination" />
