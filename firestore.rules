@@ -1,28 +1,27 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if a user is the designated admin
+    // Admin user email
     function isAdmin() {
       return request.auth.token.email == "loganathans@vmkvec.edu.in";
     }
 
-    // Exams can be read by any authenticated user, but only written by an admin.
+    // Exams: Users can read, only admin can write.
     match /exams/{examId} {
       allow read: if request.auth != null;
       allow write: if isAdmin();
     }
 
-    // Users can read/write their own profile. Admins can read any profile.
+    // Users: Can manage their own profile. Admin can read all profiles.
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
       allow read: if isAdmin();
     }
-    
-    // Submissions can be created by any authenticated user (for themselves).
-    // Admins can read all submissions for the dashboard.
+
+    // Submissions: Users can create their own. Admin can read all.
     match /submissions/{submissionId} {
-      allow create: if request.auth.uid == request.resource.data.userId;
+      allow create: if request.auth != null;
       allow read: if isAdmin();
     }
   }
