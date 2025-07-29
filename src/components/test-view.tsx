@@ -165,11 +165,11 @@ export function TestView({ exam }: { exam: Exam }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Submitting your test...</AlertDialogTitle>
+             <div className="flex justify-center items-center p-8">
+                <CheckCircle className="w-16 h-16 text-green-500 animate-pulse" />
+            </div>
             <AlertDialogDescription>
                 Please wait while we calculate your score. Good luck!
-                <div className="flex justify-center items-center p-8">
-                    <CheckCircle className="w-16 h-16 text-green-500 animate-pulse" />
-                </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
         </AlertDialogContent>
