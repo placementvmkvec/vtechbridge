@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { MOCK_EXAMS } from "@/lib/mock-data";
-import { Clock, FileText } from "lucide-react";
+import { Clock, FileText, ArrowRight } from "lucide-react";
 
 export default function DashboardPage() {
   return (
@@ -24,29 +24,46 @@ export default function DashboardPage() {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {MOCK_EXAMS.map((exam) => (
-            <Card key={exam.id} className="flex flex-col transition-transform transform hover:-translate-y-1 hover:shadow-xl duration-300">
-              <CardHeader>
-                <CardTitle className="font-headline text-xl">{exam.title}</CardTitle>
-                <CardDescription>{exam.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow space-y-4">
-                 <div className="flex items-center text-sm text-muted-foreground">
-                   <FileText className="mr-2 h-4 w-4" />
-                   <span>{exam.questionCount} Questions</span>
-                 </div>
-                 <div className="flex items-center text-sm text-muted-foreground">
-                   <Clock className="mr-2 h-4 w-4" />
-                   <span>{exam.duration} Minutes</span>
-                 </div>
-              </CardContent>
-              <CardFooter>
-                <Link href={`/test/${exam.id}`} className="w-full">
-                  <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground transition-transform transform hover:scale-105">
-                    Start Test
-                  </Button>
-                </Link>
-              </CardFooter>
-            </Card>
+            <div key={exam.id} className="flip-card h-[280px]">
+              <div className="flip-card-inner">
+                <div className="flip-card-front">
+                   <Card className="flex flex-col h-full">
+                    <CardHeader>
+                      <CardTitle className="font-headline text-xl">{exam.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-grow space-y-4">
+                       <div className="flex items-center text-sm text-muted-foreground">
+                         <FileText className="mr-2 h-4 w-4" />
+                         <span>{exam.questionCount} Questions</span>
+                       </div>
+                       <div className="flex items-center text-sm text-muted-foreground">
+                         <Clock className="mr-2 h-4 w-4" />
+                         <span>{exam.duration} Minutes</span>
+                       </div>
+                    </CardContent>
+                     <CardFooter>
+                        <div className="text-sm text-primary font-semibold">Hover to see details</div>
+                     </CardFooter>
+                  </Card>
+                </div>
+                <div className="flip-card-back">
+                   <Card className="flex flex-col h-full bg-secondary">
+                      <CardHeader>
+                        <CardTitle className="font-headline text-xl">{exam.title}</CardTitle>
+                        <CardDescription className="text-secondary-foreground/80">{exam.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="flex-grow" />
+                      <CardFooter>
+                        <Link href={`/test/${exam.id}`} className="w-full">
+                          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105">
+                            Start Test <ArrowRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </CardFooter>
+                    </Card>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       </main>
