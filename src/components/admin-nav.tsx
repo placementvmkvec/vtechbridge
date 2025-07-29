@@ -19,6 +19,11 @@ export function AdminNav() {
       label: "Users",
       active: pathname === "/admin/users",
     },
+    {
+      href: "/admin/submissions",
+      label: "Submissions",
+      active: pathname === "/admin/submissions",
+    },
   ];
 
   return (

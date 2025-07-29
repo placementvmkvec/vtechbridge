@@ -1,6 +1,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -42,7 +43,7 @@ import {
   ChartLegendContent
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Pie, PieChart, Cell } from "recharts";
-import { ClipboardList, Users, CheckCircle, Upload, Trash2 } from "lucide-react";
+import { ClipboardList, Users, CheckCircle, Upload, Trash2, Eye } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -361,26 +362,30 @@ export default function AdminDashboardPage() {
               <p className="text-xs text-muted-foreground">Active exams available to users</p>
             </CardContent>
           </Card>
-          <Card className="shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalUsers}</div>
-              <p className="text-xs text-muted-foreground">Registered users in the system</p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Submissions Today</CardTitle>
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.submissionsToday}</div>
-              <p className="text-xs text-muted-foreground">Total tests submitted today</p>
-            </CardContent>
-          </Card>
+          <Link href="/admin/users">
+            <Card className="shadow-sm hover:bg-muted/50 transition-colors">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalUsers}</div>
+                <p className="text-xs text-muted-foreground">Registered users in the system</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/admin/submissions">
+            <Card className="shadow-sm hover:bg-muted/50 transition-colors">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Submissions Today</CardTitle>
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.submissionsToday}</div>
+                <p className="text-xs text-muted-foreground">Total tests submitted today</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
@@ -471,7 +476,7 @@ export default function AdminDashboardPage() {
                                         <TableCell className="text-right">
                                              <AlertDialog open={!!submissionToDelete && submissionToDelete.id === sub.id} onOpenChange={(open) => !open && setSubmissionToDelete(null)}>
                                                 <AlertDialogTrigger asChild>
-                                                    <Button variant="destructive" size="sm" onClick={() => setSubmissionToDelete(sub)}>
+                                                    <Button variant="destructive" size="icon" onClick={() => setSubmissionToDelete(sub)}>
                                                         <Trash2 className="h-4 w-4" />
                                                         <span className="sr-only">Delete Submission</span>
                                                     </Button>
@@ -531,10 +536,16 @@ export default function AdminDashboardPage() {
                                     <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                                         {exam.createdAt ? formatDistanceToNow(exam.createdAt.toDate(), { addSuffix: true }) : 'N/A'}
                                     </TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right space-x-2">
+                                       <Link href={`/admin/submissions?examId=${exam.id}`}>
+                                            <Button variant="outline" size="icon">
+                                                <Eye className="h-4 w-4" />
+                                                <span className="sr-only">View Submissions</span>
+                                            </Button>
+                                       </Link>
                                       <AlertDialog open={!!examToDelete && examToDelete.id === exam.id} onOpenChange={(open) => !open && setExamToDelete(null)}>
                                           <AlertDialogTrigger asChild>
-                                             <Button variant="destructive" size="sm" onClick={() => setExamToDelete(exam)}>
+                                             <Button variant="destructive" size="icon" onClick={() => setExamToDelete(exam)}>
                                                 <Trash2 className="h-4 w-4" />
                                                 <span className="sr-only">Delete</span>
                                              </Button>
