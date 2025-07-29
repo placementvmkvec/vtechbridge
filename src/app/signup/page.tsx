@@ -46,6 +46,8 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const name = e.currentTarget.name.value;
+    const regNo = e.currentTarget.regNo.value;
     const email = e.currentTarget.email.value;
     const password = e.currentTarget.password.value;
     const confirmPassword = e.currentTarget.confirmPassword.value;
@@ -57,6 +59,8 @@ export default function SignupPage() {
 
     try {
       await createUserWithEmailAndPassword(auth, email, password);
+      // Here you would typically save the name and regNo to your database
+      console.log({ name, regNo });
       router.push('/dashboard');
     } catch (error) {
       console.error('Error signing up:', error);
@@ -87,7 +91,27 @@ export default function SignupPage() {
               Enter your details to create your account.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="John Doe"
+                required
+                className="text-base"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="regNo">Registration No.</Label>
+              <Input
+                id="regNo"
+                type="text"
+                placeholder="U20XX1234"
+                required
+                className="text-base"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { MOCK_EXAMS } from "@/lib/mock-data";
 import { CheckCircle, XCircle, Clock, Award, Home } from "lucide-react";
 import { notFound } from "next/navigation";
 
@@ -20,18 +19,15 @@ type ResultsPageProps = {
     score?: string;
     total?: string;
     time?: string;
+    title?: string;
   };
 };
 
 export default function ResultsPage({ params, searchParams }: ResultsPageProps) {
-  const exam = MOCK_EXAMS.find((e) => e.id === params.id);
+  const examTitle = searchParams.title || "your exam";
   
-  if (!exam) {
-    notFound();
-  }
-
   const score = Number(searchParams.score || 0);
-  const total = Number(searchParams.total || exam.questionCount);
+  const total = Number(searchParams.total || 0);
   const timeTaken = Number(searchParams.time || 0);
 
   const percentage = total > 0 ? (score / total) * 100 : 0;
@@ -56,7 +52,7 @@ export default function ResultsPage({ params, searchParams }: ResultsPageProps) 
           <CardHeader>
             <div className="mx-auto my-4">{performance.icon}</div>
             <CardTitle className="font-headline text-4xl">{performance.message}</CardTitle>
-            <CardDescription className="text-base">You have completed the "{exam.title}" exam.</CardDescription>
+            <CardDescription className="text-base">You have completed the "{decodeURIComponent(examTitle)}" exam.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="text-center">

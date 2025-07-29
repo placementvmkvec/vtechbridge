@@ -86,7 +86,7 @@ export function TestView({ exam }: { exam: Exam }) {
     // Simulate API call
     setTimeout(() => {
         router.push(
-          `/results/${exam.id}?score=${score}&total=${exam.questionCount}&time=${timeTaken}`
+          `/results/${exam.id}?score=${score}&total=${exam.questionCount}&time=${timeTaken}&title=${encodeURIComponent(exam.title)}`
         );
     }, 1000);
   };

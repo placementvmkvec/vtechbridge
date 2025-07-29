@@ -25,15 +25,14 @@ import {
   ChartLegend,
   ChartLegendContent
 } from "@/components/ui/chart";
-import { MOCK_EXAMS, MOCK_USER_RESULTS } from "@/lib/mock-data";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Pie, PieChart, Cell } from "recharts";
 import { ClipboardList, Users, CheckCircle } from "lucide-react";
 
 const chartData = [
-  { exam: "Mid-Term", passed: 4000, failed: 2400 },
-  { exam: "Final", passed: 3000, failed: 1398 },
-  { exam: "Quiz 1", passed: 2000, failed: 9800 },
-  { exam: "Advanced JS", passed: 2780, failed: 3908 },
+  { exam: "Mid-Term", passed: 0, failed: 0 },
+  { exam: "Final", passed: 0, failed: 0 },
+  { exam: "Quiz 1", passed: 0, failed: 0 },
+  { exam: "Advanced JS", passed: 0, failed: 0 },
 ];
 
 const chartConfig = {
@@ -48,8 +47,8 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 const pieChartData = [
-    { name: 'Passed', value: 75, color: 'hsl(var(--chart-1))' },
-    { name: 'Failed', value: 25, color: 'hsl(var(--chart-2))' },
+    { name: 'Passed', value: 0, color: 'hsl(var(--chart-1))' },
+    { name: 'Failed', value: 0, color: 'hsl(var(--chart-2))' },
 ];
 
 export default function AdminDashboardPage() {
@@ -64,7 +63,7 @@ export default function AdminDashboardPage() {
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{MOCK_EXAMS.length}</div>
+              <div className="text-2xl font-bold">0</div>
               <p className="text-xs text-muted-foreground">
                 Active exams available to users
               </p>
@@ -76,9 +75,9 @@ export default function AdminDashboardPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">1,250</div>
+              <div className="text-2xl font-bold">0</div>
               <p className="text-xs text-muted-foreground">
-                +180.1% from last month
+                +0% from last month
               </p>
             </CardContent>
           </Card>
@@ -90,9 +89,9 @@ export default function AdminDashboardPage() {
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{MOCK_USER_RESULTS.length}</div>
+              <div className="text-2xl font-bold">0</div>
               <p className="text-xs text-muted-foreground">
-                +19% from yesterday
+                +0% from yesterday
               </p>
             </CardContent>
           </Card>
@@ -160,25 +159,9 @@ export default function AdminDashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {MOCK_USER_RESULTS.map((result) => (
-                  <TableRow key={result.id}>
-                    <TableCell>
-                      <div className="font-medium">{result.user}</div>
-                      <div className="hidden text-sm text-muted-foreground md:inline">
-                        {result.email}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {result.exam}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={parseInt(result.score) > 80 ? 'default' : 'destructive' } className={parseInt(result.score) > 80 ? 'bg-green-500 text-white' : ''}>
-                        {result.score}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{result.date}</TableCell>
-                  </TableRow>
-                ))}
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center">No recent submissions.</TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </CardContent>
