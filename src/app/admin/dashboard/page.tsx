@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, setDoc, collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, collection, getDocs, query, orderBy, Timestamp, deleteDoc } from 'firebase/firestore';
 import { AppHeader } from "@/components/app-header";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,6 +24,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -32,7 +43,7 @@ import {
   ChartLegendContent
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Pie, PieChart, Cell } from "recharts";
-import { ClipboardList, Users, CheckCircle, Upload } from "lucide-react";
+import { ClipboardList, Users, CheckCircle, Upload, Trash2 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,6 +71,8 @@ type ExamData = {
     id: string;
     passPercentage: number;
     title: string;
+    questionCount: number;
+    createdAt: Timestamp;
 }
 
 type Submission = {
@@ -87,6 +100,7 @@ export default function AdminDashboardPage() {
   const [chartData, setChartData] = useState<any[]>([]);
   const [pieChartData, setPieChartData] = useState<any[]>([]);
   const [examsMap, setExamsMap] = useState<Record<string, ExamData>>({});
+  const [examToDelete, setExamToDelete] = useState<ExamData | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -108,7 +122,8 @@ export default function AdminDashboardPage() {
   const fetchDashboardData = async () => {
     try {
         // Fetch exams
-        const examsSnapshot = await getDocs(collection(db, 'exams'));
+        const examsQuery = query(collection(db, 'exams'), orderBy('createdAt', 'desc'));
+        const examsSnapshot = await getDocs(examsQuery);
         const examsData = examsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ExamData[];
         const examsDataMap = examsData.reduce((acc, exam) => {
             acc[exam.id] = exam;
@@ -211,7 +226,11 @@ export default function AdminDashboardPage() {
         const workbook = xlsx.read(fileData, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const rawQuestions: any[] = xlsx.utils.sheet_to_json(worksheet, { header: ["Question", "Option A", "Option B", "Option C", "Option D", "Correct Answer"], defval: "", skipHeader: false });
+        const rawQuestions: any[] = xlsx.utils.sheet_to_json(worksheet, { 
+            header: ["Question", "Option A", "Option B", "Option C", "Option D", "Correct Answer"], 
+            defval: "",
+            skipHeader: false
+        });
 
         if (rawQuestions.length === 0) {
             toast({ variant: 'destructive', title: 'Error', description: 'No questions found in the file.' });
@@ -276,6 +295,21 @@ export default function AdminDashboardPage() {
     reader.readAsArrayBuffer(file);
   };
   
+  const handleDeleteExam = async () => {
+    if (!examToDelete) return;
+
+    try {
+        await deleteDoc(doc(db, 'exams', examToDelete.id));
+        toast({ title: 'Success', description: `Exam "${examToDelete.title}" has been deleted.` });
+        fetchDashboardData(); // Refresh the list
+    } catch (error) {
+        console.error("Error deleting exam:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete the exam.' });
+    } finally {
+        setExamToDelete(null);
+    }
+  }
+
   const isAdmin = user?.email === ADMIN_EMAIL;
 
   if (loading || !isAdmin) {
@@ -373,6 +407,7 @@ export default function AdminDashboardPage() {
            <Card className="shadow-sm">
                  <CardHeader>
                     <CardTitle className="font-headline">Recent Submissions</CardTitle>
+                    <CardDescription>The 10 most recent test submissions from users.</CardDescription>
                  </CardHeader>
                  <CardContent>
                     <Table>
@@ -409,7 +444,7 @@ export default function AdminDashboardPage() {
                            })
                         ) : (
                            <TableRow>
-                                <TableCell colSpan={4} className="text-center">No recent submissions.</TableCell>
+                                <TableCell colSpan={4} className="text-center py-8">No recent submissions found.</TableCell>
                            </TableRow>
                         )}
                       </TableBody>
@@ -418,6 +453,70 @@ export default function AdminDashboardPage() {
             </Card>
         </div>
         
+        <div className="grid gap-4">
+            <Card className="shadow-sm">
+                <CardHeader>
+                    <CardTitle className="font-headline">Existing Exams</CardTitle>
+                    <CardDescription>View, edit, or delete existing exams.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Exam Title</TableHead>
+                                <TableHead>Questions</TableHead>
+                                <TableHead>Pass %</TableHead>
+                                <TableHead className="hidden md:table-cell">Created</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                           {Object.values(examsMap).length > 0 ? (
+                            Object.values(examsMap).map(exam => (
+                                <TableRow key={exam.id}>
+                                    <TableCell className="font-medium">{exam.title}</TableCell>
+                                    <TableCell>{exam.questionCount}</TableCell>
+                                    <TableCell>{exam.passPercentage}%</TableCell>
+                                    <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                                        {exam.createdAt ? formatDistanceToNow(exam.createdAt.toDate(), { addSuffix: true }) : 'N/A'}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <AlertDialog open={!!examToDelete && examToDelete.id === exam.id} onOpenChange={(open) => !open && setExamToDelete(null)}>
+                                          <AlertDialogTrigger asChild>
+                                             <Button variant="destructive" size="sm" onClick={() => setExamToDelete(exam)}>
+                                                <Trash2 className="h-4 w-4" />
+                                                <span className="sr-only">Delete</span>
+                                             </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                This action cannot be undone. This will permanently delete the
+                                                exam <span className="font-bold">"{examToDelete?.title}"</span> and all associated data.
+                                              </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                              <AlertDialogAction onClick={handleDeleteExam}>Continue</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
+                                    </TableCell>
+                                </TableRow>
+                             ))
+                           ) : (
+                             <TableRow>
+                                <TableCell colSpan={5} className="text-center py-8">No exams have been created yet.</TableCell>
+                             </TableRow>
+                           )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </div>
+
+
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
           <Card className="shadow-sm">
             <CardHeader>
@@ -464,5 +563,7 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    
 
     
