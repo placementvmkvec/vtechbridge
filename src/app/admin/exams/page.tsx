@@ -203,7 +203,7 @@ export default function AdminExamsPage() {
                           <span className="sr-only">View Analytics</span>
                         </Button>
                       </Link>
-                      <Link href={`/admin/submissions?examId=${exam.id}`}>
+                      <Link href={`/admin/exams/${exam.id}`}>
                         <Button variant="outline" size="icon">
                           <Eye className="h-4 w-4" />
                           <span className="sr-only">View Submissions</span>

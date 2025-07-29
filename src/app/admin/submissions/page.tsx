@@ -5,14 +5,14 @@ import { useEffect, useState, Suspense } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, query, where, orderBy, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Eye } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -37,19 +37,10 @@ type Exam = {
 
 function SubmissionsContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
   const [adminUser, setAdminUser] = useState<User | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [examIdFilter, setExamIdFilter] = useState<string | null>(null);
-  const [examTitle, setExamTitle] = useState<string | null>(null);
   const [examsMap, setExamsMap] = useState<Record<string, Exam>>({});
-
-  useEffect(() => {
-    const examId = searchParams.get('examId');
-    setExamIdFilter(examId);
-  }, [searchParams]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -71,21 +62,12 @@ function SubmissionsContent() {
     if (adminUser) {
         fetchSubmissions();
     }
-  }, [adminUser, examIdFilter]);
+  }, [adminUser]);
 
   const fetchSubmissions = async () => {
     setLoading(true);
     try {
-      let submissionsQuery;
-      if (examIdFilter) {
-        submissionsQuery = query(collection(db, 'submissions'), where('examId', '==', examIdFilter), orderBy('submittedAt', 'desc'));
-        const examDoc = await getDoc(doc(db, 'exams', examIdFilter));
-        if (examDoc.exists()) {
-            setExamTitle(examDoc.data().title);
-        }
-      } else {
-        submissionsQuery = query(collection(db, 'submissions'), orderBy('submittedAt', 'desc'));
-      }
+      const submissionsQuery = query(collection(db, 'submissions'), orderBy('submittedAt', 'desc'));
       
       const querySnapshot = await getDocs(submissionsQuery);
       const fetchedSubmissions = querySnapshot.docs.map((doc) => ({
@@ -116,21 +98,11 @@ function SubmissionsContent() {
     );
   }
 
-  const pageTitle = examIdFilter ? `Submissions for "${examTitle || 'Exam'}"` : "All Submissions";
-  const pageDescription = examIdFilter ? `A list of all submissions for this specific exam.` : `A list of all submissions across all exams.`;
+  const pageTitle = "All Submissions";
+  const pageDescription = `A list of all submissions across all exams.`;
 
   return (
     <div className="container mx-auto py-8">
-        {examIdFilter && (
-             <div className="mb-4">
-                <Link href="/admin/exams">
-                    <Button variant="outline">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Exams
-                    </Button>
-                </Link>
-            </div>
-        )}
         <Card>
         <CardHeader>
             <CardTitle>{pageTitle}</CardTitle>
