@@ -136,7 +136,7 @@ export default function ExamAnalyticsPage() {
                     incorrect: stats.incorrect,
                     total: total,
                 };
-            }).sort((a, b) => (a.incorrect / a.total || 0) > (b.incorrect / b.total || 0) ? -1 : 1); // Sort by most incorrect
+            }).sort((a, b) => b.incorrect - a.incorrect); // Sort by most incorrect
 
             setAnalytics(processedAnalytics);
 
@@ -183,7 +183,7 @@ export default function ExamAnalyticsPage() {
                 <Card className="mb-8">
                     <CardHeader>
                         <CardTitle>Performance Chart</CardTitle>
-                        <CardDescription>Correct vs. Incorrect answers for each question.</CardDescription>
+                        <CardDescription>Correct vs. Incorrect answers for each question, sorted by most incorrect.</CardDescription>
                     </CardHeader>
                     <CardContent>
                          <ResponsiveContainer width="100%" height={400}>
@@ -259,4 +259,3 @@ export default function ExamAnalyticsPage() {
         </div>
     );
 }
-
