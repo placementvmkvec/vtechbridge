@@ -1,6 +1,5 @@
 
 import Link from "next/link";
-import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -64,9 +63,8 @@ export default async function ResultsPage({ params, searchParams }: ResultsPageP
   const performance = getPerformanceMessage();
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-secondary">
-      <AppHeader />
-      <main className="flex-1 flex items-center justify-center p-4">
+    <div className="flex-1 bg-secondary">
+      <main className="flex items-center justify-center p-4">
         <Card className="w-full max-w-2xl shadow-2xl text-center">
           <CardHeader>
             <div className="mx-auto my-4">{performance.icon}</div>
@@ -112,5 +110,3 @@ export default async function ResultsPage({ params, searchParams }: ResultsPageP
     </div>
   );
 }
-
-    

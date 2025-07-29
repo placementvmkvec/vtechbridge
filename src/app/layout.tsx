@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AppHeader } from "@/components/app-header";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -35,7 +36,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <div className="flex flex-col min-h-screen">
+            <AppHeader />
+            <main className="flex-1">
+              {children}
+            </main>
+          </div>
           <Toaster />
         </ThemeProvider>
       </body>

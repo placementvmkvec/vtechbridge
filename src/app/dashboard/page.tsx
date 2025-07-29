@@ -3,7 +3,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -51,9 +50,8 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-secondary">
-      <AppHeader />
-      <main className="flex-1 container mx-auto p-4 md:p-8">
+    <div className="flex-1 bg-secondary">
+      <main className="container mx-auto p-4 md:p-8">
         <div className="mb-8">
           <h1 className="font-headline text-3xl md:text-4xl font-bold">Welcome Back!</h1>
           <p className="text-muted-foreground mt-2">Here are your available exams. Good luck!</p>

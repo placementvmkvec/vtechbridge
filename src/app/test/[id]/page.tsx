@@ -1,6 +1,5 @@
 
 import { TestView } from "@/components/test-view";
-import { AppHeader } from "@/components/app-header";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Exam } from "@/lib/mock-data";
@@ -55,8 +54,7 @@ export default async function TestPage({ params }: TestPageProps) {
 
   if (!exam) {
     return (
-      <div className="min-h-screen w-full flex flex-col bg-secondary">
-        <AppHeader />
+      <div className="flex-1 bg-secondary">
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Exam not found</h1>
@@ -68,8 +66,7 @@ export default async function TestPage({ params }: TestPageProps) {
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-secondary">
-      <AppHeader />
+    <div className="flex-1 bg-secondary">
       <TestView exam={exam} />
     </div>
   );

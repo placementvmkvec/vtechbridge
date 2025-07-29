@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, updateProfile, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { AppHeader } from '@/components/app-header';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -117,8 +116,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-       <div className="flex min-h-screen w-full flex-col bg-secondary">
-        <AppHeader />
+       <div className="flex-1 bg-secondary">
         <main className="flex flex-1 items-center justify-center p-4">
             <Card className="w-full max-w-2xl">
                 <CardHeader>
@@ -158,9 +156,8 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-secondary">
-      <AppHeader />
-      <main className="flex flex-1 items-center justify-center p-4">
+    <div className="flex-1 bg-secondary">
+      <main className="flex items-center justify-center p-4">
         <Card className="w-full max-w-2xl shadow-xl">
           <form onSubmit={handleProfileUpdate}>
             <CardHeader>
