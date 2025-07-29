@@ -37,7 +37,15 @@ const prompt = ai.definePrompt({
     4.  Any notable patterns or insights you can derive from the data (e.g., are there specific topics students are struggling with? Is there a wide variation in performance?).
     5.  Actionable recommendations for instructors based on these insights.
 
-    Format the output as a single block of text for the 'analysisSummary' field. Use markdown for formatting (e.g., headings, bold text, lists).
+    Format the output as a single block of text for the 'analysisSummary' field. **Use markdown for formatting**. For example:
+    ### Overall Summary
+    - **Average Score**: 75%
+    - **Pass Rate**: 100%
+
+    ### Most Difficult Questions
+    1.  **Question A**: 5 incorrect answers.
+    2.  **Question B**: 4 incorrect answers.
+    3.  **Question C**: 3 incorrect answers.
   `,
 });
 
@@ -52,3 +60,5 @@ const analyzeExamFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    

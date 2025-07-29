@@ -21,6 +21,7 @@ import * as xlsx from 'xlsx';
 import { analyzeExam } from '@/ai/flows/analyze-exam-flow';
 import type { ExamAnalysisInput, ExamAnalysisOutput } from '@/ai/schemas/exam-analysis-schemas';
 import { useToast } from '@/hooks/use-toast';
+import Markdown from 'react-markdown';
 
 const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
 
@@ -259,12 +260,12 @@ export default function ExamAnalyticsPage() {
         if (aiAnalysis?.analysisSummary) {
             doc.setFontSize(14);
             doc.text("AI-Powered Analysis", 14, 40);
-            const splitText = doc.splitTextToSize(aiAnalysis.analysisSummary.replace(/(\*|_|`)/g, ''), 180);
+            const splitText = doc.splitTextToSize(aiAnalysis.analysisSummary.replace(/(\*\*|#+\s*|`)/g, ''), 180);
             doc.setFontSize(10);
             doc.text(splitText, 14, 48);
         }
         
-        let yPos = aiAnalysis?.analysisSummary ? 120 : 40;
+        let yPos = aiAnalysis?.analysisSummary ? doc.splitTextToSize(aiAnalysis.analysisSummary, 180).length * 4 + 60 : 40;
 
         // Add Question Performance Table
         doc.setFontSize(14);
@@ -360,7 +361,7 @@ export default function ExamAnalyticsPage() {
                     {aiAnalysis && (
                         <CardContent>
                              <div className="prose prose-sm dark:prose-invert max-w-full bg-secondary p-4 rounded-lg">
-                                {aiAnalysis.analysisSummary.split('\n').map((line, i) => <p key={i}>{line}</p>)}
+                                <Markdown>{aiAnalysis.analysisSummary}</Markdown>
                             </div>
                         </CardContent>
                     )}
@@ -517,3 +518,5 @@ export default function ExamAnalyticsPage() {
         </div>
     );
 }
+
+    
