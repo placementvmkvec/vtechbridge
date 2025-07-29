@@ -2,11 +2,19 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow users to create their own profile document
+    // Rules for user profiles
     match /users/{userId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null;
-      // Allow users to read and update their own profile document
-      allow read, update: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Rules for exams
+    match /exams/{examId} {
+      // Admins have full access to create, read, update, and delete exams.
+      allow write, create, update, delete: if request.auth != null && request.auth.token.email == 'loganathans@vmkvec.edu.in';
+      
+      // Any authenticated user can read an exam.
+      allow get, list: if request.auth != null;
     }
   }
 }
