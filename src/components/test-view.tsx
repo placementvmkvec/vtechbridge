@@ -26,7 +26,11 @@ import {
   AlertDialogTitle,
   AlertDialogAction,
   AlertDialogCancel,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { auth, db } from "@/lib/firebase";
+import { doc, setDoc, collection, serverTimestamp } from "firebase/firestore";
+import { onAuthStateChanged, User } from "firebase/auth";
+
 
 type Answers = {
   [questionId: string]: string;
@@ -34,12 +38,25 @@ type Answers = {
 
 export function TestView({ exam }: { exam: Exam }) {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
   const [timeLeft, setTimeLeft] = useState(exam.duration * 60);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+      } else {
+        router.push("/login");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router]);
 
   const currentQuestion: Question | undefined = exam.questions[currentQuestionIndex];
   const progress = exam.questionCount > 0 ? ((currentQuestionIndex + 1) / exam.questionCount) * 100 : 0;
@@ -85,8 +102,8 @@ export function TestView({ exam }: { exam: Exam }) {
     }
   };
 
-  const handleSubmit = (autoSubmitted = false) => {
-    if (isSubmitting) return;
+  const handleSubmit = async (autoSubmitted = false) => {
+    if (isSubmitting || !user) return;
     
     setShowSubmitConfirm(false);
     setIsSubmitting(true);
@@ -100,8 +117,29 @@ export function TestView({ exam }: { exam: Exam }) {
     });
 
     const timeTaken = (exam.duration * 60) - timeLeft;
+    const percentage = exam.questionCount > 0 ? (score / exam.questionCount) * 100 : 0;
+    
+    try {
+        const submissionRef = doc(collection(db, "submissions"));
+        await setDoc(submissionRef, {
+            examId: exam.id,
+            examTitle: exam.title,
+            userId: user.uid,
+            userName: user.displayName,
+            userEmail: user.email,
+            score,
+            totalQuestions: exam.questionCount,
+            percentage: Math.round(percentage),
+            timeTaken,
+            submittedAt: serverTimestamp(),
+        });
+    } catch(error) {
+        console.error("Failed to save submission:", error);
+        // We can optionally show a toast message here
+    }
 
-    // Simulate API call
+
+    // Simulate API call delay for effect
     setTimeout(() => {
         router.push(
           `/results/${exam.id}?score=${score}&total=${exam.questionCount}&time=${timeTaken}&title=${encodeURIComponent(exam.title)}`

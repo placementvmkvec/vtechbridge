@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, setDoc, collection } from 'firebase/firestore';
+import { doc, setDoc, collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
 import { AppHeader } from "@/components/app-header";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,15 +39,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import * as xlsx from 'xlsx';
+import { formatDistanceToNow } from 'date-fns';
+
 
 const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
 
-const chartData: any[] = [];
 const chartConfig = {
   passed: { label: "Passed", color: "hsl(var(--chart-1))" },
   failed: { label: "Failed", color: "hsl(var(--chart-2))" },
 } satisfies ChartConfig;
-const pieChartData: any[] = [];
 
 type Question = {
   id: string;
@@ -55,6 +55,17 @@ type Question = {
   options: string[];
   correctAnswer: string;
 };
+
+type Submission = {
+    id: string;
+    userName: string;
+    userEmail: string;
+    examTitle: string;
+    score: number;
+    totalQuestions: number;
+    percentage: number;
+    submittedAt: Timestamp;
+}
 
 
 export default function AdminDashboardPage() {
@@ -64,6 +75,10 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [isCreatingExam, setIsCreatingExam] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [stats, setStats] = useState({ totalExams: 0, totalUsers: 0, submissionsToday: 0 });
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [pieChartData, setPieChartData] = useState<any[]>([]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -71,6 +86,8 @@ export default function AdminDashboardPage() {
         setUser(currentUser);
         if (currentUser.email !== ADMIN_EMAIL) {
           router.push('/dashboard');
+        } else {
+            fetchDashboardData();
         }
       } else {
         router.push('/login');
@@ -79,6 +96,69 @@ export default function AdminDashboardPage() {
     });
     return () => unsubscribe();
   }, [router]);
+
+  const fetchDashboardData = async () => {
+    try {
+        // Fetch exams
+        const examsSnapshot = await getDocs(collection(db, 'exams'));
+        const totalExams = examsSnapshot.size;
+
+        // Fetch users
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const totalUsers = usersSnapshot.size;
+        
+        // Fetch submissions
+        const submissionsQuery = query(collection(db, 'submissions'), orderBy('submittedAt', 'desc'));
+        const submissionsSnapshot = await getDocs(submissionsQuery);
+        const fetchedSubmissions = submissionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Submission[];
+        setSubmissions(fetchedSubmissions);
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const submissionsToday = fetchedSubmissions.filter(s => s.submittedAt.toDate() >= today).length;
+
+        setStats({ totalExams, totalUsers, submissionsToday });
+        
+        // Process chart data
+        processChartData(fetchedSubmissions);
+
+    } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to load dashboard data.' });
+    }
+  }
+
+  const processChartData = (submissionsData: Submission[]) => {
+      const examPerformance: { [key: string]: { passed: number, failed: number } } = {};
+      let totalPassed = 0;
+      let totalFailed = 0;
+
+      submissionsData.forEach(sub => {
+          if (!examPerformance[sub.examTitle]) {
+              examPerformance[sub.examTitle] = { passed: 0, failed: 0 };
+          }
+          if (sub.percentage >= 50) {
+              examPerformance[sub.examTitle].passed++;
+              totalPassed++;
+          } else {
+              examPerformance[sub.examTitle].failed++;
+              totalFailed++;
+          }
+      });
+      
+      const barChart = Object.keys(examPerformance).map(examTitle => ({
+          exam: examTitle,
+          passed: examPerformance[examTitle].passed,
+          failed: examPerformance[examTitle].failed,
+      }));
+      setChartData(barChart);
+
+      const pieChart = [
+        { name: 'Passed', value: totalPassed, color: 'hsl(var(--chart-1))' },
+        { name: 'Failed', value: totalFailed, color: 'hsl(var(--chart-2))' }
+      ];
+      setPieChartData(pieChart);
+  }
 
   const handleCreateExam = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -160,6 +240,7 @@ export default function AdminDashboardPage() {
         
         toast({ title: 'Success!', description: `Successfully created exam with ${numSets} sets of ${questionsPerSet} questions.` });
         form.reset();
+        fetchDashboardData(); // Refresh data
 
       } catch (error: any) {
         console.error('Error creating exam:', error);
@@ -197,7 +278,7 @@ export default function AdminDashboardPage() {
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{stats.totalExams}</div>
               <p className="text-xs text-muted-foreground">Active exams available to users</p>
             </CardContent>
           </Card>
@@ -207,8 +288,8 @@ export default function AdminDashboardPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">+0% from last month</p>
+              <div className="text-2xl font-bold">{stats.totalUsers}</div>
+              <p className="text-xs text-muted-foreground">Registered users in the system</p>
             </CardContent>
           </Card>
           <Card className="shadow-sm">
@@ -217,8 +298,8 @@ export default function AdminDashboardPage() {
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">+0% from yesterday</p>
+              <div className="text-2xl font-bold">{stats.submissionsToday}</div>
+              <p className="text-xs text-muted-foreground">Total tests submitted today</p>
             </CardContent>
           </Card>
         </div>
@@ -281,9 +362,29 @@ export default function AdminDashboardPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center">No recent submissions.</TableCell>
-                        </TableRow>
+                        {submissions.length > 0 ? (
+                           submissions.map(sub => (
+                                <TableRow key={sub.id}>
+                                    <TableCell>
+                                        <div className="font-medium">{sub.userName}</div>
+                                        <div className="text-xs text-muted-foreground">{sub.userEmail}</div>
+                                    </TableCell>
+                                    <TableCell className="hidden md:table-cell">{sub.examTitle}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={sub.percentage >= 50 ? 'default' : 'destructive'}>
+                                            {sub.percentage}%
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right text-xs text-muted-foreground">
+                                        {formatDistanceToNow(sub.submittedAt.toDate(), { addSuffix: true })}
+                                    </TableCell>
+                                </TableRow>
+                           ))
+                        ) : (
+                           <TableRow>
+                                <TableCell colSpan={4} className="text-center">No recent submissions.</TableCell>
+                           </TableRow>
+                        )}
                       </TableBody>
                     </Table>
                  </CardContent>
@@ -336,5 +437,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-
-    
