@@ -18,7 +18,8 @@ import { Badge } from '@/components/ui/badge';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as xlsx from 'xlsx';
-import { analyzeExam, ExamAnalysisInput, ExamAnalysisOutput } from '@/ai/flows/analyze-exam-flow';
+import { analyzeExam } from '@/ai/flows/analyze-exam-flow';
+import type { ExamAnalysisInput, ExamAnalysisOutput } from '@/ai/schemas/exam-analysis-schemas';
 import { useToast } from '@/hooks/use-toast';
 
 const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
