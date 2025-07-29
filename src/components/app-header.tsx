@@ -1,6 +1,7 @@
 import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "./theme-toggle";
 
 export function AppHeader({ className }: { className?: string }) {
   return (
@@ -10,6 +11,7 @@ export function AppHeader({ className }: { className?: string }) {
           <Logo />
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
+          <ThemeToggle />
           <nav className="flex items-center space-x-2">
             <UserNav />
           </nav>
