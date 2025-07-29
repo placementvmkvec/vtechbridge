@@ -18,6 +18,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
+
 export function UserNav() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -33,6 +35,8 @@ export function UserNav() {
     await signOut(auth);
     router.push('/login');
   };
+
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   return (
     <DropdownMenu>
@@ -55,14 +59,16 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-           <Link href="/profile">
+          {!isAdmin && (
+             <Link href="/profile">
+              <DropdownMenuItem>
+                Profile
+              </DropdownMenuItem>
+            </Link>
+          )}
+          <Link href={isAdmin ? "/admin/dashboard" : "/dashboard"}>
             <DropdownMenuItem>
-              Profile
-            </DropdownMenuItem>
-          </Link>
-          <Link href="/dashboard">
-            <DropdownMenuItem>
-              User Dashboard
+              Dashboard
             </DropdownMenuItem>
           </Link>
         </DropdownMenuGroup>

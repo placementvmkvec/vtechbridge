@@ -54,21 +54,26 @@ const pieChartData: any[] = [
 
 export default function AdminDashboardPage() {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-
+  
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && user.email === ADMIN_EMAIL) {
-        setIsAdmin(true);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        if (currentUser.email !== ADMIN_EMAIL) {
+          router.push('/dashboard');
+        }
       } else {
-        router.push('/dashboard'); // Redirect non-admins
+        router.push('/login');
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [router]);
+  
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   if (loading || !isAdmin) {
     return (
