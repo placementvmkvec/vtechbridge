@@ -28,7 +28,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { auth, db } from "@/lib/firebase";
-import { doc, setDoc, collection, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { onAuthStateChanged, User } from "firebase/auth";
 
 
@@ -120,7 +120,6 @@ export function TestView({ exam }: { exam: Exam }) {
     const percentage = exam.questionCount > 0 ? (score / exam.questionCount) * 100 : 0;
     
     try {
-        // Use a composite ID to ensure uniqueness for the firestore rule
         const submissionId = `${user.uid}_${exam.id}`;
         const submissionRef = doc(db, "submissions", submissionId);
         
@@ -135,14 +134,12 @@ export function TestView({ exam }: { exam: Exam }) {
             percentage: Math.round(percentage),
             timeTaken,
             submittedAt: serverTimestamp(),
+            answers: answers, // Save the full answers object
         });
     } catch(error) {
         console.error("Failed to save submission:", error);
-        // We can optionally show a toast message here
     }
 
-
-    // Simulate API call delay for effect
     setTimeout(() => {
         router.push(
           `/results/${exam.id}?score=${score}&total=${exam.questionCount}&time=${timeTaken}&title=${encodeURIComponent(exam.title)}`
@@ -168,7 +165,7 @@ export function TestView({ exam }: { exam: Exam }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Submitting your test...</AlertDialogTitle>
-             <div className="flex justify-center items-center p-8">
+            <div className="flex justify-center items-center p-8">
                 <CheckCircle className="w-16 h-16 text-green-500 animate-pulse" />
             </div>
             <AlertDialogDescription>

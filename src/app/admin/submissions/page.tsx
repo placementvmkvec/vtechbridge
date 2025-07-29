@@ -3,7 +3,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, getDocs, query, where, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -28,9 +28,7 @@ type Submission = {
     score: number;
     totalQuestions: number;
     percentage: number;
-    submittedAt: {
-        toDate: () => Date;
-    };
+    submittedAt: Timestamp;
 };
 
 type Exam = {
@@ -94,7 +92,6 @@ function SubmissionsContent() {
         ...doc.data(),
       })) as Submission[];
 
-      // Fetch all exams to get pass percentages
       const examsSnapshot = await getDocs(collection(db, 'exams'));
       const examsDataMap = examsSnapshot.docs.reduce((acc, doc) => {
         acc[doc.id] = doc.data() as Exam;
@@ -144,9 +141,9 @@ function SubmissionsContent() {
                 <TableRow>
                 <TableHead>User</TableHead>
                 <TableHead className="hidden md:table-cell">Exam</TableHead>
-                <TableHead>Score</TableHead>
                 <TableHead>Percentage</TableHead>
                 <TableHead className="hidden sm:table-cell">Submitted</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -163,9 +160,9 @@ function SubmissionsContent() {
                                 </div>
                             </TableCell>
                             <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-32" /></TableCell>
-                            <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                             <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
                             <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                            <TableCell className="text-right"><Skeleton className="h-8 w-8 rounded-md" /></TableCell>
                         </TableRow>
                     ))
                 ) : submissions.length > 0 ? (
@@ -187,7 +184,6 @@ function SubmissionsContent() {
                                     </div>
                                 </TableCell>
                                 <TableCell className="hidden md:table-cell">{sub.examTitle}</TableCell>
-                                <TableCell>{sub.score}/{sub.totalQuestions}</TableCell>
                                 <TableCell>
                                     <Badge variant={sub.percentage >= passPercentage ? 'default' : 'destructive'}>
                                         {sub.percentage}%
@@ -195,6 +191,14 @@ function SubmissionsContent() {
                                 </TableCell>
                                 <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
                                     {sub.submittedAt ? formatDistanceToNow(sub.submittedAt.toDate(), { addSuffix: true }) : 'N/A'}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <Link href={`/admin/submissions/${sub.id}`}>
+                                        <Button variant="outline" size="icon">
+                                            <Eye className="h-4 w-4" />
+                                            <span className="sr-only">View Details</span>
+                                        </Button>
+                                    </Link>
                                 </TableCell>
                             </TableRow>
                         )
