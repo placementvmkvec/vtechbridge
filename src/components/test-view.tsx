@@ -2,7 +2,7 @@
 "use client";
 
 import type { Exam, Question } from "@/lib/mock-data";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,6 +66,7 @@ export function TestView({ exam }: { exam: Exam }) {
     return () => {
         if (timerRef.current) clearInterval(timerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAnswerSelect = (questionId: string, answer: string) => {

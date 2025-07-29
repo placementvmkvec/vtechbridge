@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Exam } from "@/lib/mock-data";
+import type { Exam, Question } from "@/lib/mock-data";
 
 type TestPageProps = {
   params: {
@@ -41,14 +41,16 @@ export default function TestPage({ params }: TestPageProps) {
           const randomSetKey = setKeys[Math.floor(Math.random() * setKeys.length)];
           const questions = questionSets[randomSetKey] || [];
           
-          setExam({
+          const loadedExam: Exam = {
             id: examDoc.id,
             title: examData.title,
             description: examData.description,
             duration: examData.duration,
             questionCount: questions.length,
-            questions: questions,
-          });
+            questions: questions.map((q: any) => ({...q})), // Ensure questions are plain objects
+          };
+          setExam(loadedExam);
+
         } else {
           setError("The requested exam could not be found.");
         }
