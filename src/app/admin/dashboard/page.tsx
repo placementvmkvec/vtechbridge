@@ -1,5 +1,9 @@
 "use client";
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import { AppHeader } from "@/components/app-header";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,6 +32,9 @@ import {
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Pie, PieChart, Cell } from "recharts";
 import { ClipboardList, Users, CheckCircle } from "lucide-react";
 
+// IMPORTANT: Replace with your actual admin's email address
+const ADMIN_EMAIL = "admin@example.com";
+
 const chartData = [
   { exam: "Mid-Term", passed: 0, failed: 0 },
   { exam: "Final", passed: 0, failed: 0 },
@@ -52,6 +59,31 @@ const pieChartData = [
 ];
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user && user.email === ADMIN_EMAIL) {
+        setIsAdmin(true);
+      } else {
+        router.push('/dashboard'); // Redirect non-admins
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
+  if (loading || !isAdmin) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-secondary">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-secondary">
       <AppHeader />
