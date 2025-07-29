@@ -1,20 +1,25 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, getDocs, query, where, DocumentData, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Download, FileText, File, BrainCircuit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import * as xlsx from 'xlsx';
+import { analyzeExam, ExamAnalysisInput, ExamAnalysisOutput } from '@/ai/flows/analyze-exam-flow';
+import { useToast } from '@/hooks/use-toast';
 
 const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
 
@@ -55,6 +60,7 @@ type ScoreDistribution = {
 
 export default function ExamAnalyticsPage() {
     const router = useRouter();
+    const { toast } = useToast();
     const params = useParams();
     const examId = params.examId as string;
 
@@ -64,6 +70,13 @@ export default function ExamAnalyticsPage() {
     const [analytics, setAnalytics] = useState<QuestionAnalytics[]>([]);
     const [studentSubmissions, setStudentSubmissions] = useState<Submission[]>([]);
     const [scoreDistribution, setScoreDistribution] = useState<ScoreDistribution[]>([]);
+
+    const [isGeneratingAIReport, setIsGeneratingAIReport] = useState(false);
+    const [aiAnalysis, setAiAnalysis] = useState<ExamAnalysisOutput | null>(null);
+
+    const questionChartRef = useRef<HTMLDivElement>(null);
+    const scoreChartRef = useRef<HTMLDivElement>(null);
+
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -89,7 +102,6 @@ export default function ExamAnalyticsPage() {
     const fetchAnalyticsData = async () => {
         setLoading(true);
         try {
-            // Fetch Exam Data
             const examDocRef = doc(db, 'exams', examId);
             const examDoc = await getDoc(examDocRef);
             if (!examDoc.exists()) {
@@ -100,7 +112,6 @@ export default function ExamAnalyticsPage() {
             const examData = { id: examDoc.id, ...examDoc.data() } as Exam;
             setExam(examData);
 
-            // Fetch Submissions for this exam
             const submissionsQuery = query(collection(db, 'submissions'), where('examId', '==', examId));
             const submissionsSnapshot = await getDocs(submissionsQuery);
             const submissions = submissionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Submission[];
@@ -112,7 +123,6 @@ export default function ExamAnalyticsPage() {
                 return;
             }
             
-            // Consolidate all questions from all sets into a single map
             const allQuestionsMap = new Map<string, Question>();
             Object.values(examData.questionSets).forEach(questionSet => {
                 questionSet.forEach(q => {
@@ -120,7 +130,6 @@ export default function ExamAnalyticsPage() {
                 });
             });
 
-            // Process Analytics
             const analyticsData: Record<string, { correct: number, incorrect: number }> = {};
             
             submissions.forEach(sub => {
@@ -156,7 +165,6 @@ export default function ExamAnalyticsPage() {
 
             setAnalytics(processedAnalytics);
 
-            // Process Score Distribution
             const distribution: ScoreDistribution[] = Array.from({length: 10}, (_, i) => ({
                 range: `${i*10}-${i*10+10}%`,
                 count: 0,
@@ -165,8 +173,10 @@ export default function ExamAnalyticsPage() {
             submissions.forEach(sub => {
                 const score = sub.percentage;
                 const rangeIndex = Math.floor(score / 10);
-                if (distribution[rangeIndex]) {
+                if (distribution[rangeIndex] && distribution[rangeIndex].count !== undefined) {
                     distribution[rangeIndex].count++;
+                } else if (score === 100) { // Handle 100% case
+                    distribution[9].count++;
                 }
             });
             setScoreDistribution(distribution);
@@ -178,6 +188,116 @@ export default function ExamAnalyticsPage() {
             setLoading(false);
         }
     };
+    
+    const handleGenerateAIReport = async () => {
+        if (!exam || analytics.length === 0 || studentSubmissions.length === 0) {
+            toast({ variant: 'destructive', title: "Not enough data", description: "Cannot generate a report without exam data and submissions."});
+            return;
+        }
+        setIsGeneratingAIReport(true);
+        try {
+            const analysisInput: ExamAnalysisInput = {
+                examTitle: exam.title,
+                passPercentage: exam.passPercentage,
+                questionAnalytics: analytics.map(q => ({
+                    questionText: q.questionText,
+                    correct: q.correct,
+                    incorrect: q.incorrect,
+                    total: q.total
+                })),
+                studentPerformances: studentSubmissions.map(s => ({
+                    userName: s.userName,
+                    percentage: s.percentage
+                }))
+            };
+            const result = await analyzeExam(analysisInput);
+            setAiAnalysis(result);
+        } catch(error) {
+            console.error("AI Analysis failed:", error);
+            toast({ variant: 'destructive', title: "AI Analysis Failed", description: "There was an error generating the AI report."});
+        } finally {
+            setIsGeneratingAIReport(false);
+        }
+    }
+    
+    const downloadExcelReport = () => {
+        const wb = xlsx.utils.book_new();
+
+        // Question Analytics Sheet
+        const questionData = analytics.map(q => ({
+            "Question": q.questionText,
+            "Correct Answers": q.correct,
+            "Incorrect Answers": q.incorrect,
+            "Total Attempts": q.total,
+            "Success Rate (%)": q.total > 0 ? Math.round((q.correct / q.total) * 100) : 0,
+        }));
+        const wsQuestions = xlsx.utils.json_to_sheet(questionData);
+        xlsx.utils.book_append_sheet(wb, wsQuestions, "Question Analytics");
+
+        // Student Performance Sheet
+        const studentData = studentSubmissions.map(s => ({
+            "Student Name": s.userName,
+            "Email": s.userEmail,
+            "Score (%)": s.percentage,
+            "Status": s.percentage >= (exam?.passPercentage ?? 50) ? 'Passed' : 'Failed',
+        }));
+        const wsStudents = xlsx.utils.json_to_sheet(studentData);
+        xlsx.utils.book_append_sheet(wb, wsStudents, "Student Performance");
+
+        xlsx.writeFile(wb, `${exam?.title}_Analytics_Report.xlsx`);
+    }
+
+    const downloadPdfReport = () => {
+        const doc = new jsPDF();
+
+        // Title
+        doc.setFontSize(18);
+        doc.text(`Analytics Report for: ${exam?.title}`, 14, 22);
+
+        // AI Summary if available
+        if (aiAnalysis?.analysisSummary) {
+            doc.setFontSize(14);
+            doc.text("AI-Powered Analysis", 14, 40);
+            const splitText = doc.splitTextToSize(aiAnalysis.analysisSummary.replace(/(\*|_|`)/g, ''), 180);
+            doc.setFontSize(10);
+            doc.text(splitText, 14, 48);
+        }
+        
+        let yPos = aiAnalysis?.analysisSummary ? 120 : 40;
+
+        // Add Question Performance Table
+        doc.setFontSize(14);
+        doc.text("Question Performance", 14, yPos);
+        (doc as any).autoTable({
+            startY: yPos + 5,
+            head: [['Question', 'Correct', 'Incorrect', 'Success Rate']],
+            body: analytics.map(q => [
+                q.questionText.substring(0, 50) + (q.questionText.length > 50 ? '...' : ''), 
+                q.correct, 
+                q.incorrect, 
+                `${q.total > 0 ? Math.round((q.correct / q.total) * 100) : 'N/A'}%`
+            ]),
+        });
+        
+        yPos = (doc as any).autoTable.previous.finalY + 15;
+
+        // Add Student Performance Table
+        doc.setFontSize(14);
+        doc.text("Student Performance", 14, yPos);
+         (doc as any).autoTable({
+            startY: yPos + 5,
+            head: [['Student Name', 'Email', 'Score (%)', 'Status']],
+            body: studentSubmissions.map(s => [
+                s.userName,
+                s.userEmail,
+                s.percentage,
+                s.percentage >= (exam?.passPercentage ?? 50) ? 'Passed' : 'Failed'
+            ]),
+        });
+
+        doc.save(`${exam?.title}_Analytics_Report.pdf`);
+    };
+
 
 
     if (!user) {
@@ -190,13 +310,21 @@ export default function ExamAnalyticsPage() {
     
     return (
         <div className="container mx-auto py-8 space-y-8">
-             <div className="mb-4">
+             <div className="flex justify-between items-center mb-4">
                 <Link href="/admin/exams">
                     <Button variant="outline">
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Exams List
                     </Button>
                 </Link>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={downloadExcelReport} disabled={loading || analytics.length === 0}>
+                        <FileText className="mr-2 h-4 w-4" /> Download Excel
+                    </Button>
+                     <Button variant="outline" onClick={downloadPdfReport} disabled={loading || analytics.length === 0}>
+                        <File className="mr-2 h-4 w-4" /> Download PDF
+                    </Button>
+                </div>
             </div>
 
             <Card>
@@ -209,19 +337,42 @@ export default function ExamAnalyticsPage() {
             </Card>
 
             {loading ? (
-                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                 <div className="grid grid-cols-1 gap-8">
                     <Skeleton className="h-[400px] w-full" />
                     <Skeleton className="h-[400px] w-full" />
                 </div>
             ) : analytics.length > 0 ? (
                 <>
+                <Card>
+                    <CardHeader className="flex flex-row justify-between items-start">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <BrainCircuit className="h-6 w-6 text-primary" />
+                                AI-Powered Analysis
+                            </CardTitle>
+                            <CardDescription>An intelligent summary of this exam's performance.</CardDescription>
+                        </div>
+                        <Button onClick={handleGenerateAIReport} disabled={isGeneratingAIReport}>
+                            {isGeneratingAIReport ? 'Generating...' : 'Generate AI Report'}
+                        </Button>
+                    </CardHeader>
+                    {aiAnalysis && (
+                        <CardContent>
+                             <div className="prose prose-sm dark:prose-invert max-w-full bg-secondary p-4 rounded-lg">
+                                {aiAnalysis.analysisSummary.split('\n').map((line, i) => <p key={i}>{line}</p>)}
+                            </div>
+                        </CardContent>
+                    )}
+                </Card>
+
+
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                     <Card>
                         <CardHeader>
                             <CardTitle>Question Performance Chart</CardTitle>
                             <CardDescription>Correct vs. Incorrect answers for each question, sorted by most incorrect.</CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent ref={questionChartRef}>
                             <ResponsiveContainer width="100%" height={400}>
                                 <BarChart
                                     data={analytics}
@@ -255,7 +406,7 @@ export default function ExamAnalyticsPage() {
                             <CardTitle>Student Score Distribution</CardTitle>
                             <CardDescription>Number of students who scored in each percentage range.</CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent ref={scoreChartRef}>
                              <ResponsiveContainer width="100%" height={400}>
                                 <BarChart data={scoreDistribution} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" />
@@ -365,4 +516,3 @@ export default function ExamAnalyticsPage() {
         </div>
     );
 }
-
