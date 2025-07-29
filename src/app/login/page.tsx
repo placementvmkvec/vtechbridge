@@ -59,7 +59,7 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground transition-transform transform hover:scale-105">
               Login as User
             </Button>
             <Button onClick={handleAdminLogin} variant="outline" className="w-full">
