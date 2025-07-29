@@ -233,11 +233,17 @@ export default function ExamAnalyticsPage() {
                                 {analytics.map((q) => (
                                      <TableRow key={q.questionId}>
                                          <TableCell className="font-medium text-sm">{q.questionText}</TableCell>
-                                         <TableCell className="text-center text-green-600 font-bold flex items-center justify-center gap-2">
-                                            <CheckCircle className="h-4 w-4" /> {q.correct}
+                                         <TableCell className="text-center text-green-600 font-bold">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <CheckCircle className="h-4 w-4" /> 
+                                                <span>{q.correct}</span>
+                                            </div>
                                          </TableCell>
-                                         <TableCell className="text-center text-destructive font-bold flex items-center justify-center gap-2">
-                                             <XCircle className="h-4 w-4" /> {q.incorrect}
+                                         <TableCell className="text-center text-destructive font-bold">
+                                             <div className="flex items-center justify-center gap-2">
+                                                <XCircle className="h-4 w-4" /> 
+                                                <span>{q.incorrect}</span>
+                                             </div>
                                          </TableCell>
                                          <TableCell className="text-center font-semibold">
                                             {q.total > 0 ? `${Math.round((q.correct / q.total) * 100)}%` : 'N/A'}
