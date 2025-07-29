@@ -171,7 +171,7 @@ export default async function SubmissionDetailPage({ params }: { params: { id: s
                                         </div>
                                         <div className="mt-2 space-y-2 pl-4">
                                              <p className={`text-sm ${isCorrect ? 'text-muted-foreground' : 'text-destructive font-semibold'}`}>
-                                                Your Answer: {userAnswer || <span className="italic">Not answered</span>}
+                                                Student Answer: {userAnswer || <span className="italic">Not answered</span>}
                                              </p>
                                              {!isCorrect && (
                                                 <p className="text-sm text-green-700 dark:text-green-400 font-semibold">
