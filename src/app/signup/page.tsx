@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from 'next/navigation';
@@ -14,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from '@/components/logo';
 import { auth, googleProvider } from '@/lib/firebase';
-import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import Link from 'next/link';
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -40,18 +41,25 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     )
 }
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const email = e.currentTarget.email.value;
     const password = e.currentTarget.password.value;
+    const confirmPassword = e.currentTarget.confirmPassword.value;
+
+    if (password !== confirmPassword) {
+        alert("Passwords do not match");
+        return;
+    }
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await createUserWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
     } catch (error) {
-      console.error('Error signing in:', error);
+      console.error('Error signing up:', error);
       // You can add user-facing error handling here
     }
   };
@@ -66,22 +74,17 @@ export default function LoginPage() {
     }
   };
 
-  const handleAdminLogin = (e: React.MouseEvent) => {
-    e.preventDefault();
-    router.push('/admin/dashboard');
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm shadow-2xl bg-card/80 backdrop-blur-sm">
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleSignup}>
           <CardHeader className="space-y-4 text-center">
             <div className="flex justify-center">
               <Logo />
             </div>
-            <CardTitle className="font-headline text-3xl">Login</CardTitle>
+            <CardTitle className="font-headline text-3xl">Create an Account</CardTitle>
             <CardDescription>
-              Enter your credentials to access your test dashboard.
+              Enter your details to create your account.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -99,25 +102,26 @@ export default function LoginPage() {
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" required className="text-base" />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input id="confirmPassword" type="password" required className="text-base" />
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-             <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground transition-transform transform hover:scale-105">
-              Login as User
-            </Button>
-            <Button onClick={handleAdminLogin} variant="outline" className="w-full">
-              Login as Admin
+            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground transition-transform transform hover:scale-105">
+              Sign Up
             </Button>
             <Button variant="outline" className="w-full" onClick={handleGoogleLogin}>
                 <GoogleIcon className="mr-2 h-5 w-5" />
-                Sign in with Google
+                Sign up with Google
             </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              {"Don't have an account? "}
+             <p className="text-center text-sm text-muted-foreground">
+              {"Already have an account? "}
               <Link
-                href="/signup"
+                href="/login"
                 className="font-semibold text-primary underline-offset-4 hover:underline"
               >
-                Sign up
+                Login
               </Link>
             </p>
           </CardFooter>

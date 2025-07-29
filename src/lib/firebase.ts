@@ -1,5 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -9,7 +10,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyAncQG7Z0Y7XL9TTVNn8Cfji4NOu0Wqrwk",
   authDomain: "vtechbridge.firebaseapp.com",
   projectId: "vtechbridge",
-  storageBucket: "vtechbridge.appspot.com",
+  storageBucket: "vtechbridge.firebasestorage.app",
   messagingSenderId: "281899053981",
   appId: "1:281899053981:web:b6c9abd8704b5b370a3574",
   measurementId: "G-H5BGJCLZYD"
@@ -17,5 +18,7 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
-export { app };
+export { app, auth, googleProvider };
