@@ -250,9 +250,14 @@ export default function AdminDashboardPage() {
 
         const structuredQuestions: Question[] = rawQuestions.map((q, index) => ({
             id: `q_${index + 1}`,
-            question: q['Question'] || '',
-            options: [q['Option A'], q['Option B'], q['Option C'], q['Option D']].filter(opt => opt),
-            correctAnswer: q['Correct Answer'] || ''
+            question: (q['Question'] || '').toString().trim(),
+            options: [
+                (q['Option A'] || '').toString().trim(), 
+                (q['Option B'] || '').toString().trim(), 
+                (q['Option C'] || '').toString().trim(), 
+                (q['Option D'] || '').toString().trim()
+            ].filter(opt => opt),
+            correctAnswer: (q['Correct Answer'] || '').toString().trim()
         }));
         
         // Shuffle questions to randomize set creation
