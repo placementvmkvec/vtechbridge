@@ -33,13 +33,9 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Pie, P
 import { ClipboardList, Users, CheckCircle } from "lucide-react";
 
 // IMPORTANT: Replace with your actual admin's email address
-const ADMIN_EMAIL = "admin@example.com";
+const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
 
-const chartData = [
-  { exam: "Mid-Term", passed: 0, failed: 0 },
-  { exam: "Final", passed: 0, failed: 0 },
-  { exam: "Quiz 1", passed: 0, failed: 0 },
-  { exam: "Advanced JS", passed: 0, failed: 0 },
+const chartData: any[] = [
 ];
 
 const chartConfig = {
@@ -53,9 +49,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-const pieChartData = [
-    { name: 'Passed', value: 0, color: 'hsl(var(--chart-1))' },
-    { name: 'Failed', value: 0, color: 'hsl(var(--chart-2))' },
+const pieChartData: any[] = [
 ];
 
 export default function AdminDashboardPage() {
