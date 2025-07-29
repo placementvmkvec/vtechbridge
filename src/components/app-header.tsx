@@ -8,33 +8,42 @@ import { UserNav } from "@/components/user-nav";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
 import { Button } from "./ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, PanelLeft } from "lucide-react";
+import { useSidebar } from "./ui/sidebar";
+
+function AdminHeaderToggle() {
+    const { toggleSidebar } = useSidebar();
+    return (
+        <Button size="icon" variant="outline" className="sm:hidden" onClick={toggleSidebar}>
+            <PanelLeft className="h-5 w-5" />
+            <span className="sr-only">Toggle Menu</span>
+        </Button>
+    )
+}
 
 export function AppHeader({ className }: { className?: string }) {
   const pathname = usePathname();
   const isLandingPage = pathname === '/';
+  const isAdminPage = pathname.startsWith('/admin');
 
   return (
-    <header className={cn("sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60", className)}>
-      <div className="container flex h-16 items-center">
-        <div className="mr-4 hidden md:flex">
-          <Logo />
-        </div>
-        <div className="flex flex-1 items-center justify-end space-x-4">
-          <ThemeToggle />
-          <nav className="flex items-center space-x-2">
-            {isLandingPage ? (
-              <Link href="/login">
-                  <Button>
-                    Login
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-              </Link>
-            ) : (
-               <UserNav />
-            )}
-          </nav>
-        </div>
+    <header className={cn("sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6", className)}>
+       {isAdminPage && <AdminHeaderToggle />}
+       {!isAdminPage && <Logo />}
+      <div className="flex flex-1 items-center justify-end space-x-4">
+        <ThemeToggle />
+        <nav className="flex items-center space-x-2">
+          {isLandingPage ? (
+            <Link href="/login">
+                <Button>
+                  Login
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+            </Link>
+          ) : (
+             <UserNav />
+          )}
+        </nav>
       </div>
     </header>
   );

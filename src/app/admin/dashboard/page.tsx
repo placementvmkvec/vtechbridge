@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, collection, getDocs, query, orderBy, Timestamp, deleteDoc } from 'firebase/firestore';
-import { AppHeader } from "@/components/app-header";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -105,10 +104,10 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
-        setUser(currentUser);
         if (currentUser.email !== ADMIN_EMAIL) {
           router.push('/dashboard');
         } else {
+            setUser(currentUser);
             fetchDashboardData();
         }
       } else {
@@ -120,6 +119,7 @@ export default function AdminDashboardPage() {
   }, [router]);
 
   const fetchDashboardData = async () => {
+    setLoading(true);
     try {
         // Fetch exams
         const examsQuery = query(collection(db, 'exams'), orderBy('createdAt', 'desc'));
@@ -154,6 +154,8 @@ export default function AdminDashboardPage() {
     } catch (error) {
         console.error("Error fetching dashboard data:", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to load dashboard data.' });
+    } finally {
+        setLoading(false);
     }
   }
 
@@ -219,6 +221,7 @@ export default function AdminDashboardPage() {
       try {
         if (!event.target?.result) {
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to read the file.' });
+            setIsCreatingExam(false);
             return;
         }
         
@@ -234,12 +237,14 @@ export default function AdminDashboardPage() {
 
         if (rawQuestions.length === 0) {
             toast({ variant: 'destructive', title: 'Error', description: 'No questions found in the file.' });
+            setIsCreatingExam(false);
             return;
         }
 
         const totalRequiredQuestions = numSets * questionsPerSet;
         if (rawQuestions.length < totalRequiredQuestions) {
              toast({ variant: 'destructive', title: 'Error', description: `Not enough questions in file. Required: ${totalRequiredQuestions}, Found: ${rawQuestions.length}` });
+             setIsCreatingExam(false);
              return;
         }
 
@@ -314,16 +319,14 @@ export default function AdminDashboardPage() {
 
   if (loading || !isAdmin) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-secondary">
+      <div className="flex h-screen w-full items-center justify-center">
         <p>Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-secondary">
-      <AppHeader />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
           <Card className="shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -382,15 +385,17 @@ export default function AdminDashboardPage() {
                         <Label htmlFor="passPercentage">Pass Percentage (%)</Label>
                         <Input id="passPercentage" name="passPercentage" type="number" required placeholder="e.g., 50" min="0" max="100" />
                     </div>
+                 </div>
+                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="numSets">Number of Sets</Label>
                       <Input id="numSets" name="numSets" type="number" required placeholder="e.g., 5" />
                     </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="questionsPerSet">Questions Per Set</Label>
+                        <Input id="questionsPerSet" name="questionsPerSet" type="number" required placeholder="e.g., 20" />
+                    </div>
                  </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="questionsPerSet">Questions Per Set</Label>
-                    <Input id="questionsPerSet" name="questionsPerSet" type="number" required placeholder="e.g., 20" />
-                  </div>
                 <div className="space-y-2">
                   <Label htmlFor="questions-file">Questions File (.xlsx)</Label>
                   <Input id="questions-file" name="questions-file" type="file" required accept=".xlsx" />
@@ -559,11 +564,6 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
         </div>
-      </main>
-    </div>
+      </div>
   );
 }
-
-    
-
-    
