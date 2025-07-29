@@ -30,8 +30,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm shadow-2xl">
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <Card className="w-full max-w-sm shadow-2xl bg-card/80 backdrop-blur-sm">
         <form onSubmit={handleLogin}>
           <CardHeader className="space-y-4 text-center">
             <div className="flex justify-center">
@@ -59,7 +59,7 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
+            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
               Login as User
             </Button>
             <Button onClick={handleAdminLogin} variant="outline" className="w-full">

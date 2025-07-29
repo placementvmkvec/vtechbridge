@@ -18,13 +18,13 @@ export default function DashboardPage() {
       <AppHeader />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="mb-8">
-          <h1 className="font-headline text-3xl md:text-4xl font-bold">Welcome Back, User!</h1>
+          <h1 className="font-headline text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Welcome Back, User!</h1>
           <p className="text-muted-foreground mt-2">Here are your available exams. Good luck!</p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {MOCK_EXAMS.map((exam) => (
-            <Card key={exam.id} className="flex flex-col transition-transform transform hover:-translate-y-1 hover:shadow-xl">
+            <Card key={exam.id} className="flex flex-col transition-transform transform hover:-translate-y-1 hover:shadow-xl duration-300">
               <CardHeader>
                 <CardTitle className="font-headline text-xl">{exam.title}</CardTitle>
                 <CardDescription>{exam.description}</CardDescription>
@@ -41,7 +41,7 @@ export default function DashboardPage() {
               </CardContent>
               <CardFooter>
                 <Link href={`/test/${exam.id}`} className="w-full">
-                  <Button className="w-full bg-accent hover:bg-accent/90">
+                  <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground transition-transform transform hover:scale-105">
                     Start Test
                   </Button>
                 </Link>
