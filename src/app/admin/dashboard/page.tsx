@@ -1,3 +1,5 @@
+"use client";
+
 import { AppHeader } from "@/components/app-header";
 import { Badge } from "@/components/ui/badge";
 import {
