@@ -3,8 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
+import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset } from '@/components/ui/sidebar';
 import { AppHeader } from '@/components/app-header';
 import { Home, Users } from 'lucide-react';
 import { Logo } from '@/components/logo';
@@ -44,12 +43,12 @@ export default function AdminLayout({
                     </SidebarMenu>
                 </SidebarContent>
             </Sidebar>
-            <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+            <SidebarInset>
                 <AppHeader />
                 <main className="flex-1 p-4 sm:px-6 sm:py-0">
                     {children}
                 </main>
-            </div>
+            </SidebarInset>
         </div>
     </SidebarProvider>
   );
