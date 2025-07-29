@@ -1,4 +1,8 @@
+
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,9 +14,42 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Clock, FileText, ArrowRight } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
+
+type Exam = {
+  id: string;
+  title: string;
+  description: string;
+  questionCount: number;
+  duration: number;
+};
 
 export default function DashboardPage() {
-  const exams: any[] = [];
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchExams = async () => {
+      try {
+        const examsCollectionRef = collection(db, 'exams');
+        const querySnapshot = await getDocs(examsCollectionRef);
+        const fetchedExams = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Exam[];
+        setExams(fetchedExams);
+      } catch (error) {
+        console.error("Error fetching exams: ", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExams();
+  }, []);
+
   return (
     <div className="min-h-screen w-full flex flex-col bg-secondary">
       <AppHeader />
@@ -23,7 +60,28 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {exams.length > 0 ? (
+          {loading ? (
+             Array.from({ length: 3 }).map((_, index) => (
+                <Card key={index} className="h-[280px]">
+                    <CardHeader>
+                        <Skeleton className="h-6 w-3/4" />
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center space-x-2">
+                           <Skeleton className="h-4 w-4" />
+                           <Skeleton className="h-4 w-24" />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Skeleton className="h-4 w-4" />
+                           <Skeleton className="h-4 w-20" />
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                         <Skeleton className="h-4 w-32" />
+                    </CardFooter>
+                </Card>
+             ))
+          ) : exams.length > 0 ? (
             exams.map((exam) => (
               <div key={exam.id} className="flip-card h-[280px]">
                 <div className="flip-card-inner">
