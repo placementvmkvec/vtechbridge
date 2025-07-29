@@ -43,7 +43,7 @@ import {
   ChartLegendContent
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Pie, PieChart, Cell } from "recharts";
-import { ClipboardList, Users, CheckCircle, Upload, Trash2, Eye } from "lucide-react";
+import { ClipboardList, Users, CheckCircle, Upload, Trash2, Eye, BarChart2 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -537,6 +537,12 @@ export default function AdminDashboardPage() {
                                         {exam.createdAt ? formatDistanceToNow(exam.createdAt.toDate(), { addSuffix: true }) : 'N/A'}
                                     </TableCell>
                                     <TableCell className="text-right space-x-2">
+                                       <Link href={`/admin/analytics/${exam.id}`}>
+                                            <Button variant="outline" size="icon">
+                                                <BarChart2 className="h-4 w-4" />
+                                                <span className="sr-only">View Analytics</span>
+                                            </Button>
+                                       </Link>
                                        <Link href={`/admin/submissions?examId=${exam.id}`}>
                                             <Button variant="outline" size="icon">
                                                 <Eye className="h-4 w-4" />
