@@ -109,7 +109,7 @@ export default function AdminDashboardPage() {
         const workbook = xlsx.read(fileData, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const rawQuestions: any[] = xlsx.utils.sheet_to_json(worksheet, { header: ["Question", "Option A", "Option B", "Option C", "Option D", "Correct Answer"], defval: "" }).slice(1);
+        const rawQuestions: any[] = xlsx.utils.sheet_to_json(worksheet, { header: ["Question", "Option A", "Option B", "Option C", "Option D", "Correct Answer"], defval: "", skipHeader: false });
 
         if (rawQuestions.length === 0) {
             toast({ variant: 'destructive', title: 'Error', description: 'No questions found in the file.' });
@@ -332,3 +332,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    
