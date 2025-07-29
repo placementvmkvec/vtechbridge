@@ -4,7 +4,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, updateProfile, User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 import { AppHeader } from '@/components/app-header';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,23 +21,55 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+type UserProfile = {
+    name?: string;
+    regNo?: string;
+    department?: string;
+    year?: string;
+    sem?: string;
+};
 
 export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile>({});
+  
   const [displayName, setDisplayName] = useState('');
   const [regNo, setRegNo] = useState('');
+  const [department, setDepartment] = useState('');
+  const [year, setYear] = useState('');
+  const [sem, setSem] = useState('');
+
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        setDisplayName(currentUser.displayName || '');
-        // You would fetch regNo from your database here
-        setRegNo('U20XX1234'); // Placeholder
+        // Fetch user data from Firestore
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+            const userData = userDoc.data() as UserProfile;
+            setProfile(userData);
+            setDisplayName(currentUser.displayName || userData.name || '');
+            setRegNo(userData.regNo || '');
+            setDepartment(userData.department || '');
+            setYear(userData.year || '');
+            setSem(userData.sem || '');
+        } else {
+             setDisplayName(currentUser.displayName || '');
+        }
       } else {
         router.push('/login');
       }
@@ -51,8 +84,22 @@ export default function ProfilePage() {
     setIsSaving(true);
     if (user) {
       try {
-        await updateProfile(user, { displayName });
-        // Here you would also update the regNo in your database
+        // Update display name in Firebase Auth
+        if (displayName !== user.displayName) {
+          await updateProfile(user, { displayName });
+        }
+        
+        // Update user data in Firestore
+        const userDocRef = doc(db, 'users', user.uid);
+        await setDoc(userDocRef, {
+            name: displayName,
+            regNo,
+            department,
+            year,
+            sem,
+            email: user.email // keep email in doc
+        }, { merge: true });
+
         toast({
           title: 'Success!',
           description: 'Your profile has been updated successfully.',
@@ -128,15 +175,15 @@ export default function ProfilePage() {
               <div className="flex items-center space-x-6">
                 <Avatar className="h-24 w-24 border-2 border-primary">
                   <AvatarImage src={user?.photoURL ?? "https://placehold.co/100x100"} alt={user?.displayName ?? ""} data-ai-hint="user avatar" />
-                  <AvatarFallback className="text-3xl">{user?.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
+                  <AvatarFallback className="text-3xl">{displayName?.charAt(0) ?? 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="space-y-1">
-                    <h2 className="text-2xl font-bold">{user?.displayName}</h2>
+                    <h2 className="text-2xl font-bold">{displayName}</h2>
                     <p className="text-muted-foreground">{user?.email}</p>
                 </div>
               </div>
 
-              <div className="grid gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div className="space-y-2">
                     <Label htmlFor="displayName">Full Name</Label>
                     <Input
@@ -154,6 +201,47 @@ export default function ProfilePage() {
                         onChange={(e) => setRegNo(e.target.value)}
                         className="text-base"
                     />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="department">Department</Label>
+                    <Input
+                        id="department"
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        className="text-base"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="year">Year</Label>
+                    <Select value={year} onValueChange={setYear}>
+                        <SelectTrigger className="text-base">
+                            <SelectValue placeholder="Select Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="1">1st Year</SelectItem>
+                            <SelectItem value="2">2nd Year</SelectItem>
+                            <SelectItem value="3">3rd Year</SelectItem>
+                            <SelectItem value="4">4th Year</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="sem">Semester</Label>
+                    <Select value={sem} onValueChange={setSem}>
+                        <SelectTrigger className="text-base">
+                            <SelectValue placeholder="Select Semester" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="1">1st Sem</SelectItem>
+                            <SelectItem value="2">2nd Sem</SelectItem>
+                            <SelectItem value="3">3rd Sem</SelectItem>
+                            <SelectItem value="4">4th Sem</SelectItem>
+                            <SelectItem value="5">5th Sem</SelectItem>
+                            <SelectItem value="6">6th Sem</SelectItem>
+                            <SelectItem value="7">7th Sem</SelectItem>
+                            <SelectItem value="8">8th Sem</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>

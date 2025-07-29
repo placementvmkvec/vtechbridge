@@ -14,9 +14,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from '@/components/logo';
-import { auth, googleProvider } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider, db } from '@/lib/firebase';
+import { createUserWithEmailAndPassword, signInWithPopup, updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -43,6 +45,7 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export default function SignupPage() {
   const router = useRouter();
+  const { toast } = useToast();
 
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -53,28 +56,64 @@ export default function SignupPage() {
     const confirmPassword = e.currentTarget.confirmPassword.value;
 
     if (password !== confirmPassword) {
-        alert("Passwords do not match");
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Passwords do not match.',
+        });
         return;
     }
 
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      // Here you would typically save the name and regNo to your database
-      console.log({ name, regNo });
-      router.push('/dashboard');
-    } catch (error) {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Update profile display name
+      await updateProfile(user, { displayName: name });
+      
+      // Save user data to Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        name: name,
+        regNo: regNo,
+        email: email,
+      });
+
+      toast({
+        title: 'Success!',
+        description: 'Your account has been created.',
+      });
+
+      router.push('/profile');
+    } catch (error: any) {
       console.error('Error signing up:', error);
-      // You can add user-facing error handling here
+       toast({
+        variant: 'destructive',
+        title: 'Uh oh! Something went wrong.',
+        description: error.message,
+      });
     }
   };
 
   const handleGoogleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      // You might want to check if the user already exists in your firestore db
+      // and handle merging or creating a new document accordingly.
+      await setDoc(doc(db, "users", user.uid), {
+        name: user.displayName,
+        email: user.email,
+        regNo: '', // Google sign-in won't provide this
+      }, { merge: true }); // Merge to avoid overwriting existing data if any
+
       router.push('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error signing in with Google:', error);
-      // You can add user-facing error handling here
+       toast({
+        variant: 'destructive',
+        title: 'Uh oh! Something went wrong.',
+        description: error.message,
+      });
     }
   };
 
@@ -145,7 +184,7 @@ export default function SignupPage() {
                 </span>
               </div>
             </div>
-            <Button variant="outline" className="w-full" onClick={handleGoogleLogin}>
+            <Button variant="outline" className="w-full" type="button" onClick={handleGoogleLogin}>
                 <GoogleIcon className="mr-2 h-5 w-5" />
                 Sign up with Google
             </Button>
