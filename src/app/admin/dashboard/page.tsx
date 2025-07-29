@@ -56,10 +56,17 @@ type Question = {
   correctAnswer: string;
 };
 
+type ExamData = {
+    id: string;
+    passPercentage: number;
+    title: string;
+}
+
 type Submission = {
     id: string;
     userName: string;
     userEmail: string;
+    examId: string;
     examTitle: string;
     score: number;
     totalQuestions: number;
@@ -79,6 +86,7 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState({ totalExams: 0, totalUsers: 0, submissionsToday: 0 });
   const [chartData, setChartData] = useState<any[]>([]);
   const [pieChartData, setPieChartData] = useState<any[]>([]);
+  const [examsMap, setExamsMap] = useState<Record<string, ExamData>>({});
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -101,6 +109,12 @@ export default function AdminDashboardPage() {
     try {
         // Fetch exams
         const examsSnapshot = await getDocs(collection(db, 'exams'));
+        const examsData = examsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ExamData[];
+        const examsDataMap = examsData.reduce((acc, exam) => {
+            acc[exam.id] = exam;
+            return acc;
+        }, {} as Record<string, ExamData>);
+        setExamsMap(examsDataMap);
         const totalExams = examsSnapshot.size;
 
         // Fetch users
@@ -120,7 +134,7 @@ export default function AdminDashboardPage() {
         setStats({ totalExams, totalUsers, submissionsToday });
         
         // Process chart data
-        processChartData(fetchedSubmissions);
+        processChartData(fetchedSubmissions, examsDataMap);
 
     } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -128,16 +142,19 @@ export default function AdminDashboardPage() {
     }
   }
 
-  const processChartData = (submissionsData: Submission[]) => {
+  const processChartData = (submissionsData: Submission[], examsDataMap: Record<string, ExamData>) => {
       const examPerformance: { [key: string]: { passed: number, failed: number } } = {};
       let totalPassed = 0;
       let totalFailed = 0;
 
       submissionsData.forEach(sub => {
+          const exam = examsDataMap[sub.examId];
+          const passPercentage = exam?.passPercentage ?? 50; // Default to 50 if not set
+
           if (!examPerformance[sub.examTitle]) {
               examPerformance[sub.examTitle] = { passed: 0, failed: 0 };
           }
-          if (sub.percentage >= 50) {
+          if (sub.percentage >= passPercentage) {
               examPerformance[sub.examTitle].passed++;
               totalPassed++;
           } else {
@@ -171,11 +188,12 @@ export default function AdminDashboardPage() {
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
     const duration = Number(formData.get('duration'));
+    const passPercentage = Number(formData.get('passPercentage'));
     const file = formData.get('questions-file') as File;
     const numSets = Number(formData.get('numSets'));
     const questionsPerSet = Number(formData.get('questionsPerSet'));
 
-    if (!file || !title || !duration || !numSets || !questionsPerSet) {
+    if (!file || !title || !duration || !passPercentage || !numSets || !questionsPerSet) {
       toast({ variant: 'destructive', title: 'Error', description: 'Please fill out all fields.' });
       setIsCreatingExam(false);
       return;
@@ -233,6 +251,7 @@ export default function AdminDashboardPage() {
             title: title,
             description: description,
             duration: duration,
+            passPercentage: passPercentage,
             questionCount: questionsPerSet, // Now it's questions per set
             questionSets: questionSets,
             createdAt: new Date(),
@@ -325,6 +344,10 @@ export default function AdminDashboardPage() {
                       <Label htmlFor="duration">Duration (minutes)</Label>
                       <Input id="duration" name="duration" type="number" required placeholder="e.g., 60" />
                     </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="passPercentage">Pass Percentage (%)</Label>
+                        <Input id="passPercentage" name="passPercentage" type="number" required placeholder="e.g., 50" min="0" max="100" />
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="numSets">Number of Sets</Label>
                       <Input id="numSets" name="numSets" type="number" required placeholder="e.g., 5" />
@@ -363,23 +386,27 @@ export default function AdminDashboardPage() {
                       </TableHeader>
                       <TableBody>
                         {submissions.length > 0 ? (
-                           submissions.slice(0, 10).map(sub => (
-                                <TableRow key={sub.id}>
-                                    <TableCell>
-                                        <div className="font-medium">{sub.userName}</div>
-                                        <div className="text-xs text-muted-foreground">{sub.userEmail}</div>
-                                    </TableCell>
-                                    <TableCell className="hidden md:table-cell">{sub.examTitle}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={sub.percentage >= 50 ? 'default' : 'destructive'}>
-                                            {sub.percentage}%
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right text-xs text-muted-foreground">
-                                        {sub.submittedAt ? formatDistanceToNow(sub.submittedAt.toDate(), { addSuffix: true }) : 'Just now'}
-                                    </TableCell>
-                                </TableRow>
-                           ))
+                           submissions.slice(0, 10).map(sub => {
+                                const exam = examsMap[sub.examId];
+                                const passPercentage = exam?.passPercentage ?? 50;
+                                return (
+                                    <TableRow key={sub.id}>
+                                        <TableCell>
+                                            <div className="font-medium">{sub.userName}</div>
+                                            <div className="text-xs text-muted-foreground">{sub.userEmail}</div>
+                                        </TableCell>
+                                        <TableCell className="hidden md:table-cell">{sub.examTitle}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={sub.percentage >= passPercentage ? 'default' : 'destructive'}>
+                                                {sub.percentage}%
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right text-xs text-muted-foreground">
+                                            {sub.submittedAt ? formatDistanceToNow(sub.submittedAt.toDate(), { addSuffix: true }) : 'Just now'}
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                           })
                         ) : (
                            <TableRow>
                                 <TableCell colSpan={4} className="text-center">No recent submissions.</TableCell>
@@ -437,3 +464,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    

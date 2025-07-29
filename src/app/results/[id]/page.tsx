@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,8 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, XCircle, Clock, Award, Home } from "lucide-react";
-import { notFound } from "next/navigation";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type ResultsPageProps = {
   params: { id: string };
@@ -23,23 +25,40 @@ type ResultsPageProps = {
   };
 };
 
-export default function ResultsPage({ params, searchParams }: ResultsPageProps) {
+async function getPassPercentage(examId: string): Promise<number> {
+    try {
+        const examDoc = await getDoc(doc(db, "exams", examId));
+        if (examDoc.exists()) {
+            return examDoc.data()?.passPercentage ?? 50;
+        }
+        return 50;
+    } catch (error) {
+        console.error("Error fetching pass percentage:", error);
+        return 50; // Default to 50 on error
+    }
+}
+
+export default async function ResultsPage({ params, searchParams }: ResultsPageProps) {
+  const examId = params.id;
   const examTitle = searchParams.title || "your exam";
   
   const score = Number(searchParams.score || 0);
   const total = Number(searchParams.total || 0);
   const timeTaken = Number(searchParams.time || 0);
+  const passPercentage = await getPassPercentage(examId);
 
   const percentage = total > 0 ? (score / total) * 100 : 0;
   const incorrect = total - score;
   const minutes = Math.floor(timeTaken / 60);
   const seconds = timeTaken % 60;
+  
+  const isPassed = percentage >= passPercentage;
 
   const getPerformanceMessage = () => {
+    if (!isPassed) return { message: "Keep practicing!", icon: <XCircle className="h-16 w-16 text-destructive" />, color: "text-destructive" };
     if (percentage >= 90) return { message: "Excellent work!", icon: <Award className="h-16 w-16 text-yellow-400" />, color: "text-primary" };
     if (percentage >= 70) return { message: "Great job!", icon: <Award className="h-16 w-16 text-slate-500" />, color: "text-primary" };
-    if (percentage >= 50) return { message: "Good effort!", icon: <CheckCircle className="h-16 w-16 text-primary" />, color: "text-yellow-600" };
-    return { message: "Keep practicing!", icon: <XCircle className="h-16 w-16 text-destructive" />, color: "text-destructive" };
+    return { message: "Good effort!", icon: <CheckCircle className="h-16 w-16 text-primary" />, color: "text-yellow-600" };
   };
 
   const performance = getPerformanceMessage();
@@ -53,6 +72,9 @@ export default function ResultsPage({ params, searchParams }: ResultsPageProps) 
             <div className="mx-auto my-4">{performance.icon}</div>
             <CardTitle className="font-headline text-4xl">{performance.message}</CardTitle>
             <CardDescription className="text-base">You have completed the "{decodeURIComponent(examTitle)}" exam.</CardDescription>
+             <div className={`text-lg font-semibold pt-2 ${isPassed ? 'text-primary' : 'text-destructive'}`}>
+                {isPassed ? `Congratulations! You passed.` : `You needed ${passPercentage}% to pass.`}
+             </div>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="text-center">
@@ -90,3 +112,5 @@ export default function ResultsPage({ params, searchParams }: ResultsPageProps) 
     </div>
   );
 }
+
+    
