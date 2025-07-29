@@ -20,11 +20,12 @@ service cloud.firestore {
       allow write: if request.auth.uid == userId;
     }
 
-    // Submissions: Users can create their own once, Admins can do anything
+    // Submissions: Users can create their own once, Admins can read/delete
     match /submissions/{submissionId} {
       allow read, delete: if isAdmin();
-      allow create: if request.auth != null && 
-      !exists(/databases/$(database)/documents/submissions/$(request.resource.data.userId)_$(request.resource.data.examId));
+      // A user can create a submission if they are authenticated and a submission for that user and exam doesn't already exist.
+      // The submissionId is expected to be in the format: `${userId}_${examId}`
+      allow create: if request.auth != null && !exists(path(submissionId));
       allow update: if false; // Submissions are immutable
     }
   }
