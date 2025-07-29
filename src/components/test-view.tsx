@@ -1,7 +1,8 @@
+
 "use client";
 
 import type { Exam, Question } from "@/lib/mock-data";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogAction,
+  AlertDialogCancel,
 } from "@/components/ui/alert-dialog"
 
 type Answers = {
@@ -35,23 +38,34 @@ export function TestView({ exam }: { exam: Exam }) {
   const [answers, setAnswers] = useState<Answers>({});
   const [timeLeft, setTimeLeft] = useState(exam.duration * 60);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const currentQuestion: Question = exam.questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / exam.questionCount) * 100;
+  const currentQuestion: Question | undefined = exam.questions[currentQuestionIndex];
+  const progress = exam.questionCount > 0 ? ((currentQuestionIndex + 1) / exam.questionCount) * 100 : 0;
   const isLastQuestion = currentQuestionIndex === exam.questionCount - 1;
 
+  const stopTimer = () => {
+    if (timerRef.current) {
+        clearInterval(timerRef.current);
+    }
+  }
+
   useEffect(() => {
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setTimeLeft((prevTime) => {
         if (prevTime <= 1) {
-          clearInterval(timer);
-          handleSubmit();
+          if (timerRef.current) clearInterval(timerRef.current);
+          handleSubmit(true); // Auto-submit
           return 0;
         }
         return prevTime - 1;
       });
     }, 1000);
-    return () => clearInterval(timer);
+    
+    return () => {
+        if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
   const handleAnswerSelect = (questionId: string, answer: string) => {
@@ -70,9 +84,12 @@ export function TestView({ exam }: { exam: Exam }) {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (autoSubmitted = false) => {
     if (isSubmitting) return;
+    
+    setShowSubmitConfirm(false);
     setIsSubmitting(true);
+    stopTimer();
     
     let score = 0;
     exam.questions.forEach((q) => {
@@ -88,8 +105,16 @@ export function TestView({ exam }: { exam: Exam }) {
         router.push(
           `/results/${exam.id}?score=${score}&total=${exam.questionCount}&time=${timeTaken}&title=${encodeURIComponent(exam.title)}`
         );
-    }, 1000);
+    }, 1500);
   };
+  
+  if (!currentQuestion) {
+      return (
+         <div className="flex-1 flex items-center justify-center">
+            <p>No questions available for this exam.</p>
+         </div>
+      )
+  }
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
@@ -110,6 +135,22 @@ export function TestView({ exam }: { exam: Exam }) {
           </AlertDialogHeader>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to submit?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Once you submit, you cannot change your answers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleSubmit()}>Submit</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
 
       <div className="container mx-auto flex items-center justify-between p-4 border-b">
           <div className="w-full">
@@ -156,7 +197,7 @@ export function TestView({ exam }: { exam: Exam }) {
               <ChevronLeft className="mr-2 h-4 w-4" /> Previous
             </Button>
             {isLastQuestion ? (
-              <Button onClick={handleSubmit} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Button onClick={() => setShowSubmitConfirm(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                 Submit Test <CheckCircle className="ml-2 h-4 w-4" />
               </Button>
             ) : (
