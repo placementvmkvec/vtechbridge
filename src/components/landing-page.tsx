@@ -2,7 +2,6 @@
 "use client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { AppHeader } from "@/components/app-header";
 import { ArrowRight, CheckCircle, BarChart, Users, Timer } from "lucide-react";
 import Image from "next/image";
 import {
@@ -15,7 +14,6 @@ import {
 export function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <AppHeader />
       <main className="flex-1">
         <section className="w-full py-20 md:py-32 lg:py-40 bg-transparent">
           <div className="container px-4 md:px-6">
