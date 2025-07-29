@@ -100,6 +100,8 @@ export default function AdminDashboardPage() {
   const [pieChartData, setPieChartData] = useState<any[]>([]);
   const [examsMap, setExamsMap] = useState<Record<string, ExamData>>({});
   const [examToDelete, setExamToDelete] = useState<ExamData | null>(null);
+  const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -320,6 +322,22 @@ export default function AdminDashboardPage() {
     }
   }
 
+  const handleDeleteSubmission = async () => {
+    if (!submissionToDelete) return;
+
+    try {
+        await deleteDoc(doc(db, 'submissions', submissionToDelete.id));
+        toast({ title: 'Success', description: `Submission for ${submissionToDelete.userEmail} has been deleted.` });
+        fetchDashboardData(); // Refresh the list
+    } catch (error) {
+        console.error("Error deleting submission:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete the submission.' });
+    } finally {
+        setSubmissionToDelete(null);
+    }
+  }
+
+
   const isAdmin = user?.email === ADMIN_EMAIL;
 
   if (loading || !isAdmin) {
@@ -426,7 +444,8 @@ export default function AdminDashboardPage() {
                           <TableHead>User</TableHead>
                           <TableHead className="hidden md:table-cell">Exam</TableHead>
                           <TableHead>Score</TableHead>
-                          <TableHead className="text-right">Date</TableHead>
+                          <TableHead className="hidden md:table-cell">Date</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -446,15 +465,37 @@ export default function AdminDashboardPage() {
                                                 {sub.percentage}%
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-right text-xs text-muted-foreground">
+                                        <TableCell className="text-right text-xs text-muted-foreground hidden md:table-cell">
                                             {sub.submittedAt ? formatDistanceToNow(sub.submittedAt.toDate(), { addSuffix: true }) : 'Just now'}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                             <AlertDialog open={!!submissionToDelete && submissionToDelete.id === sub.id} onOpenChange={(open) => !open && setSubmissionToDelete(null)}>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="destructive" size="sm" onClick={() => setSubmissionToDelete(sub)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                        <span className="sr-only">Delete Submission</span>
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This will permanently delete the submission for <span className="font-bold">{submissionToDelete?.userName}</span> on the exam <span className="font-bold">"{submissionToDelete?.examTitle}"</span>. This allows the user to retake the test.
+                                                    </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleDeleteSubmission}>Continue</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
                                         </TableCell>
                                     </TableRow>
                                 )
                            })
                         ) : (
                            <TableRow>
-                                <TableCell colSpan={4} className="text-center py-8">No recent submissions found.</TableCell>
+                                <TableCell colSpan={5} className="text-center py-8">No recent submissions found.</TableCell>
                            </TableRow>
                         )}
                       </TableBody>

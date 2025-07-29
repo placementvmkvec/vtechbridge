@@ -120,7 +120,10 @@ export function TestView({ exam }: { exam: Exam }) {
     const percentage = exam.questionCount > 0 ? (score / exam.questionCount) * 100 : 0;
     
     try {
-        const submissionRef = doc(collection(db, "submissions"));
+        // Use a composite ID to ensure uniqueness for the firestore rule
+        const submissionId = `${user.uid}_${exam.id}`;
+        const submissionRef = doc(db, "submissions", submissionId);
+        
         await setDoc(submissionRef, {
             examId: exam.id,
             examTitle: exam.title,
