@@ -45,7 +45,7 @@ export function LandingPage() {
               </div>
                <div className="relative">
                  <Image
-                    src="https://placehold.co/600x400.png"
+                    src="https://java-skill-bee-club.netlify.app/static/media/team10.f3ff024fb083b02e834f.jpg"
                     width="600"
                     height="400"
                     alt="Hero"
