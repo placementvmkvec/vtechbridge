@@ -50,7 +50,7 @@ import {
   ChartLegendContent
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Pie, PieChart, Cell } from "recharts";
-import { ClipboardList, Users, CheckCircle, Upload, Trash2, Eye, BarChart2, Code } from "lucide-react";
+import { ClipboardList, Users, CheckCircle, Upload, Trash2, Eye, BarChart2, Code, PlusCircle, X } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -100,6 +100,10 @@ type Submission = {
     submittedAt: Timestamp;
 }
 
+type TestCase = {
+    input: string;
+    output: string;
+};
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -107,6 +111,8 @@ export default function AdminDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCreatingExam, setIsCreatingExam] = useState(false);
+  const [isCreatingCodingProblem, setIsCreatingCodingProblem] = useState(false);
+
   const formRef = useRef<HTMLFormElement>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [stats, setStats] = useState({ totalExams: 0, totalUsers: 0, submissionsToday: 0 });
@@ -114,6 +120,8 @@ export default function AdminDashboardPage() {
   const [pieChartData, setPieChartData] = useState<any[]>([]);
   const [examsMap, setExamsMap] = useState<Record<string, ExamData>>({});
   const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
+
+  const [testCases, setTestCases] = useState<TestCase[]>([{ input: '', output: '' }]);
 
 
   useEffect(() => {
@@ -335,6 +343,33 @@ export default function AdminDashboardPage() {
     }
   }
 
+  const handleAddTestCase = () => {
+    setTestCases([...testCases, { input: '', output: '' }]);
+  };
+
+  const handleRemoveTestCase = (index: number) => {
+    const newTestCases = testCases.filter((_, i) => i !== index);
+    setTestCases(newTestCases);
+  };
+
+  const handleTestCaseChange = (index: number, field: 'input' | 'output', value: string) => {
+    const newTestCases = [...testCases];
+    newTestCases[index][field] = value;
+    setTestCases(newTestCases);
+  };
+
+  const handleCreateCodingProblem = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsCreatingCodingProblem(true);
+    // Logic to save coding problem will go here
+    console.log("Creating coding problem...");
+    // Reset form or give feedback
+    setTimeout(() => {
+        setIsCreatingCodingProblem(false);
+        toast({ title: 'Success!', description: 'Coding problem created (simulated).' });
+    }, 1000);
+  };
+
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
@@ -442,14 +477,14 @@ export default function AdminDashboardPage() {
                   </form>
                 </TabsContent>
                  <TabsContent value="coding" className="pt-4">
-                   <form className="space-y-4">
+                   <form onSubmit={handleCreateCodingProblem} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="coding-title">Problem Title</Label>
-                            <Input id="coding-title" name="coding-title" placeholder="e.g., Two Sum" />
+                            <Input id="coding-title" name="coding-title" placeholder="e.g., Two Sum" required />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="language">Programming Language</Label>
-                             <Select name="language">
+                             <Select name="language" required>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a language" />
                                 </SelectTrigger>
@@ -471,26 +506,46 @@ export default function AdminDashboardPage() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="problem-statement">Problem Statement</Label>
-                            <Textarea id="problem-statement" name="problem-statement" placeholder="Describe the coding challenge..." rows={6} />
+                            <Textarea id="problem-statement" name="problem-statement" placeholder="Describe the coding challenge..." rows={6} required />
                         </div>
                         <div className="space-y-2">
                             <Label>Test Cases</Label>
-                            <div className="border rounded-lg p-4 space-y-2">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Input placeholder="Input" />
-                                    <Input placeholder="Expected Output" />
-                                </div>
-                                 <div className="grid grid-cols-2 gap-2">
-                                    <Input placeholder="Input" />
-                                    <Input placeholder="Expected Output" />
-                                </div>
-                                <Button type="button" variant="outline" size="sm">Add Test Case</Button>
+                            <div className="border rounded-lg p-4 space-y-4">
+                                {testCases.map((testCase, index) => (
+                                    <div key={index} className="flex items-center gap-2">
+                                        <div className="grid grid-cols-2 gap-2 flex-grow">
+                                            <Input 
+                                                placeholder={`Input ${index + 1}`} 
+                                                value={testCase.input}
+                                                onChange={(e) => handleTestCaseChange(index, 'input', e.target.value)}
+                                                required
+                                            />
+                                            <Input 
+                                                placeholder={`Expected Output ${index + 1}`} 
+                                                value={testCase.output}
+                                                onChange={(e) => handleTestCaseChange(index, 'output', e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        {testCases.length > 1 && (
+                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveTestCase(index)}>
+                                                <X className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                ))}
+                                <Button type="button" variant="outline" size="sm" onClick={handleAddTestCase}>
+                                    <PlusCircle className="mr-2 h-4 w-4"/>
+                                    Add Test Case
+                                </Button>
                             </div>
                              <p className="text-xs text-muted-foreground">
-                                Provide inputs and their expected outputs.
+                                Provide inputs and their expected outputs. At least one test case is required.
                             </p>
                         </div>
-                        <Button type="submit" disabled>Create Coding Problem</Button>
+                        <Button type="submit" disabled={isCreatingCodingProblem}>
+                            {isCreatingCodingProblem ? 'Creating...' : 'Create Coding Problem'}
+                        </Button>
                     </form>
                 </TabsContent>
             </Tabs>
@@ -613,3 +668,5 @@ export default function AdminDashboardPage() {
       </div>
   );
 }
+
+    
