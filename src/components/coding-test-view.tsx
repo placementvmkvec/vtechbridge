@@ -73,6 +73,12 @@ type EvaluationResult = {
     input: string;
 };
 
+type CustomRunResult = {
+    output: string;
+    error?: string;
+    input: string;
+}
+
 
 export function CodingTestView({ problem }: Props) {
   const { theme } = useTheme();
@@ -80,72 +86,57 @@ export function CodingTestView({ problem }: Props) {
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [runCompleted, setRunCompleted] = useState(false);
   const [evaluationResults, setEvaluationResults] = useState<EvaluationResult[]>([]);
   const [totalScore, setTotalScore] = useState<number | null>(null);
+
+  const [customInput, setCustomInput] = useState('');
+  const [isCustomRunning, setIsCustomRunning] = useState(false);
+  const [customRunResult, setCustomRunResult] = useState<CustomRunResult | null>(null);
   
   const editorTheme = theme === 'dark' ? 'monokai' : 'github';
   const languageMode = languageModeMap[problem.language] || 'javascript';
   
-  const executeCode = async (testCase: TestCase, language: string, version: string, sourceCode: string): Promise<Omit<EvaluationResult, 'testCaseIndex' | 'isPublic'>> => {
+  const executeCode = async (sourceCode: string, input: string) => {
+    const languageVersion = languageVersionMap[problem.language];
      try {
          const response = await fetch('https://emkc.org/api/v2/piston/execute', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                language: language,
-                version: version,
+                language: problem.language,
+                version: languageVersion,
                 files: [{ content: sourceCode }],
-                stdin: testCase.input,
+                stdin: input,
             }),
         });
 
         if (!response.ok) {
             const errorText = await response.text();
-            let errorMessage = `API request failed with status ${response.status}.`;
+            let errorMessage = `API Error: ${errorText}`;
             if (response.status === 404) errorMessage = "The execution service endpoint was not found (404)."
             return {
-                passed: false,
-                output: `API Error: ${errorText}`,
-                expected: testCase.output,
+                output: errorMessage,
                 error: errorMessage,
-                input: testCase.input,
             };
         }
 
         const data = await response.json();
-        const output = data.run?.stdout?.trim() || data.run?.stderr?.trim() || 'No output';
-        const error = data.run?.stderr;
         return {
-            passed: !error && output === testCase.output,
-            output: output,
-            expected: testCase.output,
-            error: error,
-            input: testCase.input,
+            output: data.run?.stdout?.trim() || data.run?.stderr?.trim() || 'No output',
+            error: data.run?.stderr,
         };
      } catch (err: any) {
          return {
-            passed: false,
             output: `Client Error: ${err.message}`,
-            expected: testCase.output,
             error: `Client-side fetch error`,
-            input: testCase.input,
         };
      }
   }
 
   const handleRunCode = async () => {
       setIsRunning(true);
-      setRunCompleted(false);
       setEvaluationResults([]);
       setTotalScore(null);
-
-      const languageVersion = languageVersionMap[problem.language];
-      if (!languageVersion) {
-          alert(`Language ${problem.language} is not supported by the execution engine.`);
-          setIsRunning(false);
-          return;
-      }
       
       const allTestCases = [
         ...problem.publicTestCases.map(tc => ({...tc, isPublic: true})),
@@ -155,22 +146,32 @@ export function CodingTestView({ problem }: Props) {
       const results: EvaluationResult[] = [];
       for (let i = 0; i < allTestCases.length; i++) {
         const tc = allTestCases[i];
-        const result = await executeCode(tc, problem.language, languageVersion, code);
+        const executionResult = await executeCode(code, tc.input);
         results.push({
-            ...result,
+            ...executionResult,
+            passed: !executionResult.error && executionResult.output === tc.output,
             testCaseIndex: i,
             isPublic: tc.isPublic,
+            expected: tc.output,
+            input: tc.input
         });
       }
       
       setEvaluationResults(results);
-      setRunCompleted(true);
       setIsRunning(false);
   }
 
+  const handleCustomRun = async () => {
+    setIsCustomRunning(true);
+    setCustomRunResult(null);
+    const result = await executeCode(code, customInput);
+    setCustomRunResult({ ...result, input: customInput });
+    setIsCustomRunning(false);
+  }
+
   const handleSubmit = async () => {
-    if (!runCompleted) {
-        alert("Please run your code at least once before submitting.");
+    if (evaluationResults.length === 0) {
+        alert("Please run your code against the test cases at least once before submitting.");
         return;
     }
     setIsSubmitting(true);
@@ -182,10 +183,12 @@ export function CodingTestView({ problem }: Props) {
     // Simulate API call to save score - in a real app, you would save this to Firestore
     await new Promise(resolve => setTimeout(resolve, 1000));
     
+    // In a real app, you would navigate away or show a proper success message.
     alert(`Final score of ${finalScore} submitted!`);
+    // Example: router.push('/dashboard');
   };
 
-  const isLoading = isRunning;
+  const isLoading = isRunning || isCustomRunning;
 
   return (
     <div className="flex flex-col h-screen p-4 gap-4 bg-secondary">
@@ -194,9 +197,9 @@ export function CodingTestView({ problem }: Props) {
             <div className="flex items-center gap-2">
                  <Button onClick={handleRunCode} disabled={isLoading || isSubmitting} variant="secondary">
                     {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                    {isRunning ? 'Running...' : 'Run Code'}
+                    {isRunning ? 'Running...' : 'Run All Tests'}
                 </Button>
-                <Button onClick={handleSubmit} disabled={isLoading || !runCompleted || isSubmitting}>
+                <Button onClick={handleSubmit} disabled={isLoading || evaluationResults.length === 0 || isSubmitting}>
                     {isSubmitting ? 'Submitted' : <Shield className="mr-2 h-4 w-4" />}
                     {isSubmitting && totalScore !== null ? `Score: ${totalScore}` : 'Submit Final Code'}
                 </Button>
@@ -223,7 +226,7 @@ export function CodingTestView({ problem }: Props) {
                             <Unlock className="h-5 w-5" /> Public Test Cases
                         </CardTitle>
                         <CardDescription>
-                            Your code will be tested against these examples.
+                            These are the examples your code will be tested against.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -269,69 +272,101 @@ export function CodingTestView({ problem }: Props) {
                 </Card>
                 
                  <Card className="max-h-[350px] flex flex-col">
-                    <CardHeader>
-                        <CardTitle>Results</CardTitle>
-                        <CardDescription>Results from your latest run will appear here.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-2 overflow-y-auto flex-1">
-                        {isRunning && (
-                            <div className="flex items-center justify-center p-8 gap-2 text-muted-foreground">
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                                <span>Evaluating your code...</span>
+                    <Tabs defaultValue="results" className="w-full h-full flex flex-col">
+                         <TabsList className="mx-6 mt-6 grid w-auto grid-cols-2 self-start">
+                            <TabsTrigger value="results">Test Results</TabsTrigger>
+                            <TabsTrigger value="custom">Custom Input</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="results" className="flex-1 overflow-hidden">
+                             <CardHeader>
+                                <CardTitle>Test Results</CardTitle>
+                                <CardDescription>Results from your latest run will appear here.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-2 overflow-y-auto h-full">
+                                {isRunning && (
+                                    <div className="flex items-center justify-center p-8 gap-2 text-muted-foreground">
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        <span>Evaluating your code...</span>
+                                    </div>
+                                )}
+                                {!isRunning && evaluationResults.length === 0 && (
+                                    <div className="text-center text-sm text-muted-foreground p-4">
+                                        Click "Run All Tests" to check your solution.
+                                    </div>
+                                )}
+                                {!isRunning && evaluationResults.length > 0 && (
+                                    <ScrollArea className="h-full pr-4">
+                                        <div className="space-y-2">
+                                        {evaluationResults.map((result) => {
+                                            const testCaseNumber = result.isPublic 
+                                                ? result.testCaseIndex + 1 
+                                                : result.testCaseIndex - problem.publicTestCases.length + 1;
+                                            
+                                            return (
+                                                <Alert key={`${result.isPublic}-${result.testCaseIndex}`} variant={result.passed ? 'default' : 'destructive'}>
+                                                    <AlertTitle className="flex items-center gap-2">
+                                                        {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                                                        <span>
+                                                            {result.isPublic ? `Public Test Case #${testCaseNumber}` : `Private Test Case #${testCaseNumber}`} - 
+                                                            <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
+                                                        </span>
+                                                    </AlertTitle>
+                                                    {result.isPublic && (
+                                                        <AlertDescription asChild>
+                                                            <div className="mt-2 font-mono text-xs space-y-1">
+                                                                <p><b>Input:</b> {result.input}</p>
+                                                                <p><b>Expected:</b> {result.expected}</p>
+                                                                <p><b>Your Output:</b> {result.output}</p>
+                                                                {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
+                                                            </div>
+                                                        </AlertDescription>
+                                                    )}
+                                                </Alert>
+                                            )
+                                        })}
+                                        </div>
+                                    </ScrollArea>
+                                )}
+                            </CardContent>
+                        </TabsContent>
+                        <TabsContent value="custom" className="flex-1 flex flex-col p-4 space-y-4">
+                            <div>
+                                <Label htmlFor="custom-input" className="mb-2 block">Custom Input (stdin)</Label>
+                                <Textarea id="custom-input" value={customInput} onChange={(e) => setCustomInput(e.target.value)} placeholder="Enter your test input here..." rows={3} />
                             </div>
-                        )}
-                        {!isRunning && evaluationResults.length === 0 && (
-                            <div className="text-center text-sm text-muted-foreground p-4">
-                                Click "Run Code" to test your solution.
-                            </div>
-                        )}
-                        {!isRunning && evaluationResults.length > 0 && (
-                            <ScrollArea className="h-full pr-4">
-                                <div className="space-y-2">
-                                {evaluationResults.map((result) => {
-                                    const testCaseNumber = result.isPublic 
-                                        ? result.testCaseIndex + 1 
-                                        : result.testCaseIndex - problem.publicTestCases.length + 1;
-                                    
-                                    return (
-                                        <Alert key={`${result.isPublic}-${result.testCaseIndex}`} variant={result.passed ? 'default' : 'destructive'}>
-                                            <AlertTitle className="flex items-center gap-2">
-                                                {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                                                <span>
-                                                    {result.isPublic ? `Public Test Case #${testCaseNumber}` : `Private Test Case #${testCaseNumber}`} - 
-                                                    <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
-                                                </span>
-                                            </AlertTitle>
-                                            {result.isPublic && !result.passed && (
-                                                <AlertDescription asChild>
-                                                    <div className="mt-2 font-mono text-xs space-y-1">
-                                                        <p><b>Input:</b> {result.input}</p>
-                                                        <p><b>Expected:</b> {result.expected}</p>
-                                                        <p><b>Your Output:</b> {result.output}</p>
-                                                        {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
-                                                    </div>
-                                                </AlertDescription>
-                                            )}
-                                        </Alert>
-                                    )
-                                })}
+                            <Button onClick={handleCustomRun} disabled={isLoading || isSubmitting} className="self-start">
+                                {isCustomRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Play className="mr-2 h-4 w-4"/>}
+                                {isCustomRunning ? 'Running...' : 'Run with Custom Input'}
+                            </Button>
+                            {isCustomRunning && (
+                                 <div className="flex items-center justify-center p-8 gap-2 text-muted-foreground">
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    <span>Running your code...</span>
                                 </div>
-                            </ScrollArea>
-                        )}
-                         {!isRunning && totalScore !== null && (
-                            <Alert variant="default" className="mt-4 bg-primary/10">
-                                <AlertTitle className="flex items-center gap-2">
-                                    <Shield className="h-4 w-4 text-primary"/> Final Submission Results
-                                </AlertTitle>
-                                <AlertDescription>
-                                    Your final score is <span className="font-bold">{totalScore}</span>. You can now safely leave this page.
-                                </AlertDescription>
-                            </Alert>
-                         )}
-                    </CardContent>
+                            )}
+                            {customRunResult && !isCustomRunning && (
+                                <div className="space-y-2">
+                                    <Label>Your Output</Label>
+                                    <pre className="p-4 bg-secondary rounded-lg font-mono text-sm overflow-x-auto">
+                                        <code>{customRunResult.output}</code>
+                                    </pre>
+                                     {customRunResult.error && (
+                                        <>
+                                         <Label className="text-destructive">Error</Label>
+                                         <pre className="p-4 bg-destructive/10 text-destructive rounded-lg font-mono text-sm overflow-x-auto">
+                                            <code>{customRunResult.error}</code>
+                                         </pre>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </TabsContent>
+                    </Tabs>
                 </Card>
             </div>
         </div>
     </div>
   );
 }
+
+    
