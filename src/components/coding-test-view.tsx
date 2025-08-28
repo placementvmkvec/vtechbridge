@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { CodingProblem, TestCase } from '@/app/coding/[id]/page';
+import type { CodingProblem } from '@/app/coding/[id]/page';
 import AceEditor from 'react-ace';
 import 'ace-builds/src-noconflict/mode-javascript';
 import 'ace-builds/src-noconflict/mode-python';
@@ -33,6 +33,21 @@ type Props = {
   problem: CodingProblem;
 };
 
+const languageVersionMap: Record<string, string> = {
+    javascript: "18.15.0",
+    typescript: "5.0.3",
+    python: "3.10.0",
+    java: "15.0.2",
+    csharp: "6.12.0",
+    cpp: "10.2.0",
+    c: "10.2.0",
+    php: "8.2.3",
+    go: "1.16.2",
+    rust: "1.68.2",
+    swift: "5.8",
+    kotlin: "1.8.20",
+};
+
 const languageModeMap: Record<string, string> = {
     'javascript': 'javascript',
     'python': 'python',
@@ -58,6 +73,7 @@ type EvaluationResult = {
     input: string;
 };
 
+
 export function CodingTestView({ problem }: Props) {
   const { theme } = useTheme();
   const [code, setCode] = useState('');
@@ -73,35 +89,55 @@ export function CodingTestView({ problem }: Props) {
   
   const editorTheme = theme === 'dark' ? 'monokai' : 'github';
   const languageMode = languageModeMap[problem.language] || 'javascript';
-
-  const executeCode = async (testCases: {input: string, output: string}[], isPrivateRun: boolean) => {
-    const response = await fetch('/api/evaluate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        code,
-        language: problem.language,
-        testCases: testCases,
-      }),
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        // Create a synthetic error result for all test cases
-        const errorResults = testCases.map((tc, index) => ({
+  
+  const executeCode = async (testCases: {input: string, output: string}[], isPrivateRun: boolean): Promise<EvaluationResult[]> => {
+    const languageVersion = languageVersionMap[problem.language];
+    if (!languageVersion) {
+        return testCases.map((tc, index) => ({
              testCaseIndex: index,
              isPublic: !isPrivateRun,
              passed: false,
-             output: `API Error: ${errorText}`,
+             output: `Language ${problem.language} is not supported.`,
              expected: tc.output,
-             error: `API Error: ${response.statusText}`,
+             error: `Unsupported Language`,
              input: tc.input,
         }));
-        
-        return errorResults;
     }
-    
-    return response.json();
+
+    const promises = testCases.map((tc, index) => fetch('https://emkc.org/api/v2/piston/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            language: problem.language,
+            version: languageVersion,
+            files: [{ content: code }],
+            stdin: tc.input,
+        }),
+    }).then(res => res.json()).then(data => {
+        const output = data.run?.stdout?.trim() || data.run?.stderr || 'No output';
+        const error = data.run?.stderr;
+        return {
+            testCaseIndex: index,
+            isPublic: !isPrivateRun,
+            passed: !error && output === tc.output,
+            output: output,
+            expected: tc.output,
+            error: error,
+            input: tc.input,
+        };
+    }).catch(err => {
+         return {
+            testCaseIndex: index,
+            isPublic: !isPrivateRun,
+            passed: false,
+            output: `API Error: ${err.message}`,
+            expected: tc.output,
+            error: `API Error`,
+            input: tc.input,
+        };
+    }));
+
+    return Promise.all(promises);
   }
 
   const handleRunPublicTests = async () => {
@@ -116,13 +152,12 @@ export function CodingTestView({ problem }: Props) {
       setIsRunning(true);
       setRunResult(null);
 
-      const result = await executeCode([{input: customInput, output: ''}], false);
-      if (result && result.length > 0) {
-        setRunResult({ ...result[0], passed: false, isPublic: false });
+      const results = await executeCode([{input: customInput, output: ''}], false);
+      if (results && results.length > 0) {
+        setRunResult({ ...results[0], passed: false, isPublic: false });
       } else {
         setRunResult({ passed: false, input: customInput, output: "Execution failed or produced no output.", error: "Execution failed"});
       }
-
       setIsRunning(false);
   }
 
@@ -149,8 +184,8 @@ export function CodingTestView({ problem }: Props) {
             <h1 className="text-xl font-bold font-headline">{problem.title}</h1>
             <div className="flex items-center gap-2">
                  <Button onClick={handleRunPublicTests} disabled={isLoading} variant="outline">
-                    {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                    {isRunning ? 'Running...' : 'Run Public Tests'}
+                    {isRunning && !isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                    {isRunning && !isSubmitting ? 'Running...' : 'Run Public Tests'}
                 </Button>
                 <Button onClick={handleSubmit} disabled={isLoading}>
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
@@ -230,9 +265,38 @@ export function CodingTestView({ problem }: Props) {
                                         )}
                                     </Alert>
                                 ))
+                            ) : submissionResults.length > 0 ? (
+                                <>
+                                    <Alert variant={totalScore !== null && totalScore > 0 ? 'default' : 'destructive'}>
+                                         <AlertTitle className="flex items-center gap-2">
+                                            {totalScore !== null && totalScore > 0 ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                                            Final Submission Result
+                                        </AlertTitle>
+                                        <AlertDescription>
+                                            You passed {submissionResults.filter(r => r.passed).length} out of {submissionResults.length} private test cases.
+                                            <p className="font-bold text-lg">Total Score: {totalScore ?? 0}</p>
+                                        </AlertDescription>
+                                    </Alert>
+                                    {submissionResults.map((result, index) => (
+                                         <Alert key={index} variant={result.passed ? 'default' : 'destructive'}>
+                                            <AlertTitle className="flex items-center gap-2">
+                                                {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                                                Private Test Case #{index + 1} - {result.passed ? 'Passed' : 'Failed'}
+                                            </AlertTitle>
+                                             {!result.passed && (
+                                                <AlertDescription asChild>
+                                                    <div className="mt-2 font-mono text-xs space-y-1">
+                                                    <p>Your code did not produce the expected output.</p>
+                                                     {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
+                                                    </div>
+                                                </AlertDescription>
+                                            )}
+                                        </Alert>
+                                    ))}
+                                </>
                             ) : (
                                 <div className="text-center text-sm text-muted-foreground p-4">
-                                    Click "Run Public Tests" to see the results here.
+                                    Click "Run Public Tests" to see the results here or "Submit" to see your score.
                                 </div>
                             )}
                         </TabsContent>
@@ -242,7 +306,7 @@ export function CodingTestView({ problem }: Props) {
                                 <Label htmlFor="custom-input" className="mb-2 block">Custom Input</Label>
                                 <Textarea id="custom-input" value={customInput} onChange={(e) => setCustomInput(e.target.value)} placeholder="Enter your test input here..." rows={3} />
                                 <Button onClick={handleRunCustom} disabled={isLoading} variant="secondary" size="sm" className="mt-2">
-                                    {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                                    {isRunning && !isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
                                     Run Custom Input
                                 </Button>
                             </div>
@@ -268,3 +332,4 @@ export function CodingTestView({ problem }: Props) {
     </div>
   );
 }
+
