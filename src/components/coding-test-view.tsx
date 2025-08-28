@@ -112,9 +112,8 @@ export function CodingTestView({ problem }: Props) {
 
         if (!response.ok) {
             const errorText = await response.text();
-            let errorMessage = `API Error: ${errorText}`;
-            if (response.status === 404) errorMessage = "The execution service endpoint was not found (404)."
-            return {
+            let errorMessage = `API Error: ${response.statusText} - ${errorText}`;
+             return {
                 output: errorMessage,
                 error: errorMessage,
             };
@@ -146,13 +145,17 @@ export function CodingTestView({ problem }: Props) {
     
     for (let i = 0; i < allTestCases.length; i++) {
         const tc = allTestCases[i];
+        // Find the index relative to its type (public/private)
+        const typeIndex = tc.isPublic 
+            ? problem.publicTestCases.findIndex(c => c.input === tc.input) 
+            : problem.privateTestCases.findIndex(c => c.input === tc.input);
+
         const executionResult = await executeCode(code, tc.input);
-        const privateCaseIndex = allTestCases.filter(c => !c.isPublic).findIndex(c => c.input === tc.input);
 
         results.push({
             ...executionResult,
             passed: !executionResult.error && executionResult.output === tc.output,
-            testCaseIndex: tc.isPublic ? i : privateCaseIndex,
+            testCaseIndex: typeIndex,
             isPublic: tc.isPublic,
             expected: tc.output,
             input: tc.input
@@ -209,13 +212,13 @@ export function CodingTestView({ problem }: Props) {
             </div>
         </header>
 
-        <div className="flex flex-col gap-4">
+         <div className="grid grid-cols-1 gap-4">
             <Card>
                 <CardHeader>
                     <CardTitle>Problem Statement</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <ScrollArea className="h-full pr-4">
+                    <ScrollArea className="h-64 pr-4">
                        <div className="prose dark:prose-invert max-w-full p-2">
                            <Markdown>{problem.problemStatement}</Markdown>
                        </div>
@@ -229,7 +232,7 @@ export function CodingTestView({ problem }: Props) {
                         <Unlock className="h-5 w-5" /> Public Test Cases
                     </CardTitle>
                     <CardDescription>
-                        These are the examples your code will be tested against.
+                        These are the examples your code will be tested against. Your code should pass these before you submit.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -240,6 +243,9 @@ export function CodingTestView({ problem }: Props) {
                             <p><span className="text-muted-foreground">Expected Output:</span> {tc.output}</p>
                         </div>
                     ))}
+                     {problem.publicTestCases.length === 0 && (
+                        <p className="text-sm text-muted-foreground">No public test cases provided.</p>
+                    )}
                 </CardContent>
             </Card>
             
@@ -282,7 +288,7 @@ export function CodingTestView({ problem }: Props) {
                         </CardHeader>
                     <CardContent className="h-[40vh]">
                         <TabsContent value="results" className="h-full">
-                                <ScrollArea className="h-full">
+                                <ScrollArea className="h-full pr-4">
                                 {isRunning && (
                                     <div className="flex items-center justify-center h-full gap-2 text-muted-foreground">
                                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -291,36 +297,43 @@ export function CodingTestView({ problem }: Props) {
                                 )}
                                 {!isRunning && evaluationResults.length === 0 && (
                                     <div className="text-center text-sm text-muted-foreground h-full flex items-center justify-center">
-                                        Click "Run Code" to check your solution against test cases.
+                                        Click "Run Code" to check your solution against test cases. Results from your latest run will appear here.
                                     </div>
                                 )}
                                 {!isRunning && evaluationResults.length > 0 && (
                                     <div className="space-y-2">
-                                        {evaluationResults.map((result) => {
-                                            const testCaseNumber = result.isPublic ? problem.publicTestCases.findIndex(tc => tc.input === result.input) + 1 : result.testCaseIndex + 1;
-                                            
-                                            return (
-                                                <Alert key={`${result.isPublic}-${result.testCaseIndex}`} variant={result.passed ? 'default' : 'destructive'}>
-                                                    <AlertTitle className="flex items-center gap-2">
-                                                        {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                                                        <span>
-                                                            {result.isPublic ? `Public Test Case #${testCaseNumber}` : `Private Test Case #${testCaseNumber}`} - 
-                                                            <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
-                                                        </span>
-                                                    </AlertTitle>
-                                                    {result.isPublic && !result.passed && (
-                                                        <AlertDescription asChild>
-                                                            <div className="mt-2 font-mono text-xs space-y-1">
-                                                                <p><b>Input:</b> {result.input}</p>
-                                                                <p><b>Expected:</b> {result.expected}</p>
-                                                                <p><b>Your Output:</b> {result.output}</p>
-                                                                {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
-                                                            </div>
-                                                        </AlertDescription>
-                                                    )}
-                                                </Alert>
-                                            )
-                                        })}
+                                        {evaluationResults.filter(r => r.isPublic).map((result) => (
+                                            <Alert key={`public-${result.testCaseIndex}`} variant={result.passed ? 'default' : 'destructive'}>
+                                                <AlertTitle className="flex items-center gap-2">
+                                                    {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                                                    <span>
+                                                        Public Test Case #{result.testCaseIndex + 1} - 
+                                                        <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
+                                                    </span>
+                                                </AlertTitle>
+                                                {!result.passed && (
+                                                    <AlertDescription asChild>
+                                                        <div className="mt-2 font-mono text-xs space-y-1">
+                                                            <p><b>Input:</b> {result.input}</p>
+                                                            <p><b>Expected:</b> {result.expected}</p>
+                                                            <p><b>Your Output:</b> {result.output}</p>
+                                                            {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
+                                                        </div>
+                                                    </AlertDescription>
+                                                )}
+                                            </Alert>
+                                        ))}
+                                         {evaluationResults.filter(r => !r.isPublic).map((result) => (
+                                            <Alert key={`private-${result.testCaseIndex}`} variant={result.passed ? 'default' : 'destructive'}>
+                                                <AlertTitle className="flex items-center gap-2">
+                                                    {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                                                    <span>
+                                                        Private Test Case #{result.testCaseIndex + 1} - 
+                                                        <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
+                                                    </span>
+                                                </AlertTitle>
+                                            </Alert>
+                                        ))}
                                     </div>
                                 )}
                             </ScrollArea>
@@ -347,6 +360,9 @@ export function CodingTestView({ problem }: Props) {
                                                     )}
                                             </div>
                                         )}
+                                         {!customRunResult && !isCustomRunning && (
+                                            <div className="p-4 text-sm text-muted-foreground">Run with custom input to see output here.</div>
+                                         )}
                                     </ScrollArea>
                                 </div>
                             </div>

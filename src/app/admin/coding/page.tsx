@@ -42,17 +42,18 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
-import { Code, Trash2 } from 'lucide-react';
+import { Code, Trash2, Edit, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
 
 const ADMIN_EMAIL = 'loganathans@vmkvec.edu.in';
 
 type TestCase = {
   input: string;
   output: string;
-}
+};
 
 type CodingProblem = {
   id: string;
@@ -70,7 +71,8 @@ export default function AdminCodingProblemsPage() {
   const [adminUser, setAdminUser] = useState<User | null>(null);
   const [problems, setProblems] = useState<CodingProblem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [problemToDelete, setProblemToDelete] = useState<CodingProblem | null>(null);
+  const [problemToDelete, setProblemToDelete] =
+    useState<CodingProblem | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -97,7 +99,10 @@ export default function AdminCodingProblemsPage() {
   const fetchProblems = async () => {
     setLoading(true);
     try {
-      const problemsQuery = query(collection(db, 'coding_problems'), orderBy('createdAt', 'desc'));
+      const problemsQuery = query(
+        collection(db, 'coding_problems'),
+        orderBy('createdAt', 'desc')
+      );
       const querySnapshot = await getDocs(problemsQuery);
       const fetchedProblems = querySnapshot.docs.map(
         (doc) =>
@@ -151,11 +156,25 @@ export default function AdminCodingProblemsPage() {
 
   return (
     <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h1 className="text-2xl font-bold">Coding Problems</h1>
+          <p className="text-muted-foreground">
+            View, create, and manage all coding problems.
+          </p>
+        </div>
+        <Link href="/admin/coding/new">
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create New Problem
+          </Button>
+        </Link>
+      </div>
       <Card>
         <CardHeader>
-          <CardTitle>Coding Problems</CardTitle>
+          <CardTitle>All Problems</CardTitle>
           <CardDescription>
-            View and manage all created coding problems.
+            A list of all available coding challenges.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -166,7 +185,7 @@ export default function AdminCodingProblemsPage() {
                 <TableHead>Language</TableHead>
                 <TableHead>Public Cases</TableHead>
                 <TableHead>Private Cases</TableHead>
-                 <TableHead>Points/Case</TableHead>
+                <TableHead>Points/Case</TableHead>
                 <TableHead className="hidden md:table-cell">Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -181,13 +200,13 @@ export default function AdminCodingProblemsPage() {
                     <TableCell>
                       <Skeleton className="h-4 w-24" />
                     </TableCell>
-                     <TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-12" />
                     </TableCell>
-                     <TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-12" />
                     </TableCell>
-                     <TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-12" />
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
@@ -201,10 +220,18 @@ export default function AdminCodingProblemsPage() {
               ) : problems.length > 0 ? (
                 problems.map((problem) => (
                   <TableRow key={problem.id}>
-                    <TableCell className="font-medium">{problem.title}</TableCell>
-                    <TableCell><Badge variant="secondary">{problem.language}</Badge></TableCell>
-                    <TableCell>{problem.publicTestCases?.length || 0}</TableCell>
-                    <TableCell>{problem.privateTestCases?.length || 0}</TableCell>
+                    <TableCell className="font-medium">
+                      {problem.title}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{problem.language}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {problem.publicTestCases?.length || 0}
+                    </TableCell>
+                    <TableCell>
+                      {problem.privateTestCases?.length || 0}
+                    </TableCell>
                     <TableCell>{problem.pointsPerCase || 0}</TableCell>
                     <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                       {problem.createdAt
@@ -214,8 +241,16 @@ export default function AdminCodingProblemsPage() {
                         : 'N/A'}
                     </TableCell>
                     <TableCell className="text-right space-x-2">
+                       <Link href={`/admin/coding/${problem.id}/edit`}>
+                         <Button variant="outline" size="icon">
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Edit</span>
+                         </Button>
+                       </Link>
                       <AlertDialog
-                        open={!!problemToDelete && problemToDelete.id === problem.id}
+                        open={
+                          !!problemToDelete && problemToDelete.id === problem.id
+                        }
                         onOpenChange={(open) => !open && setProblemToDelete(null)}
                       >
                         <AlertDialogTrigger asChild>

@@ -100,21 +100,14 @@ type Submission = {
     submittedAt: Timestamp;
 }
 
-type TestCase = {
-    input: string;
-    output: string;
-};
-
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCreatingExam, setIsCreatingExam] = useState(false);
-  const [isCreatingCodingProblem, setIsCreatingCodingProblem] = useState(false);
 
   const [examFormRef, setExamFormRef] = useState<HTMLFormElement | null>(null);
-  const [codingFormRef, setCodingFormRef] = useState<HTMLFormElement | null>(null);
 
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [stats, setStats] = useState({ totalExams: 0, totalUsers: 0, submissionsToday: 0 });
@@ -122,10 +115,6 @@ export default function AdminDashboardPage() {
   const [pieChartData, setPieChartData] = useState<any[]>([]);
   const [examsMap, setExamsMap] = useState<Record<string, ExamData>>({});
   const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
-
-  const [publicTestCases, setPublicTestCases] = useState<TestCase[]>([{ input: '', output: '' }]);
-  const [privateTestCases, setPrivateTestCases] = useState<TestCase[]>([{ input: '', output: '' }]);
-
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -346,83 +335,6 @@ export default function AdminDashboardPage() {
     }
   }
 
-  const handleAddTestCase = (type: 'public' | 'private') => {
-    if (type === 'public') {
-      setPublicTestCases([...publicTestCases, { input: '', output: '' }]);
-    } else {
-      setPrivateTestCases([...privateTestCases, { input: '', output: '' }]);
-    }
-  };
-
-  const handleRemoveTestCase = (type: 'public' | 'private', index: number) => {
-    if (type === 'public') {
-      setPublicTestCases(publicTestCases.filter((_, i) => i !== index));
-    } else {
-      setPrivateTestCases(privateTestCases.filter((_, i) => i !== index));
-    }
-  };
-
-  const handleTestCaseChange = (type: 'public' | 'private', index: number, field: 'input' | 'output', value: string) => {
-    if (type === 'public') {
-      const newTestCases = [...publicTestCases];
-      newTestCases[index][field] = value;
-      setPublicTestCases(newTestCases);
-    } else {
-        const newTestCases = [...privateTestCases];
-        newTestCases[index][field] = value;
-        setPrivateTestCases(newTestCases);
-    }
-  };
-
-  const handleCreateCodingProblem = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = codingFormRef;
-    if (!form) return;
-
-    setIsCreatingCodingProblem(true);
-    
-    const formData = new FormData(form);
-    const title = formData.get('coding-title') as string;
-    const language = formData.get('language') as string;
-    const problemStatement = formData.get('problem-statement') as string;
-    const pointsPerCase = Number(formData.get('points-per-case'));
-
-    const finalPublicTestCases = publicTestCases.filter(tc => tc.input.trim() !== '' && tc.output.trim() !== '');
-    const finalPrivateTestCases = privateTestCases.filter(tc => tc.input.trim() !== '' && tc.output.trim() !== '');
-
-    if (!title || !language || !problemStatement || !pointsPerCase || finalPrivateTestCases.length === 0) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Please fill out all required fields and provide at least one valid private test case.' });
-      setIsCreatingCodingProblem(false);
-      return;
-    }
-
-    try {
-      const codingProblemsCollectionRef = collection(db, 'coding_problems');
-      await addDoc(codingProblemsCollectionRef, {
-        title,
-        language,
-        problemStatement,
-        pointsPerCase,
-        publicTestCases: finalPublicTestCases,
-        privateTestCases: finalPrivateTestCases,
-        createdAt: new Date(),
-      });
-      
-      toast({ title: 'Success!', description: `Successfully created coding problem: "${title}"` });
-      form.reset();
-      setPublicTestCases([{ input: '', output: '' }]);
-      setPrivateTestCases([{ input: '', output: '' }]);
-
-
-    } catch (error: any) {
-        console.error('Error creating coding problem:', error);
-        toast({ variant: 'destructive', title: 'Creation Failed', description: error.message });
-    } finally {
-        setIsCreatingCodingProblem(false);
-    }
-  };
-
-
   const isAdmin = user?.email === ADMIN_EMAIL;
 
   if (loading || !isAdmin) {
@@ -477,150 +389,50 @@ export default function AdminDashboardPage() {
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2">Create New Content</CardTitle>
-              <CardDescription>Create a Multiple Choice Exam or a Coding Challenge.</CardDescription>
+              <CardTitle className="font-headline flex items-center gap-2">Create New MCQ Exam</CardTitle>
+              <CardDescription>Upload an Excel file to create a Multiple Choice Question exam.</CardDescription>
             </CardHeader>
             <CardContent>
-            <Tabs defaultValue="mcq" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="mcq"><Upload className="mr-2 h-4 w-4"/> Multiple Choice</TabsTrigger>
-                    <TabsTrigger value="coding"><Code className="mr-2 h-4 w-4"/> Coding Problem</TabsTrigger>
-                </TabsList>
-                <TabsContent value="mcq"  className="pt-4">
-                  <form ref={setExamFormRef} onSubmit={handleCreateExam} className="space-y-4">
+              <form ref={setExamFormRef} onSubmit={handleCreateExam} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Exam Title</Label>
+                  <Input id="title" name="title" required placeholder="e.g., Mid-term Examination" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea id="description" name="description" placeholder="A short description of the exam." />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="title">Exam Title</Label>
-                      <Input id="title" name="title" required placeholder="e.g., Mid-term Examination" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea id="description" name="description" placeholder="A short description of the exam." />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="duration">Duration (minutes)</Label>
-                          <Input id="duration" name="duration" type="number" required placeholder="e.g., 60" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="passPercentage">Pass Percentage (%)</Label>
-                            <Input id="passPercentage" name="passPercentage" type="number" required placeholder="e.g., 50" min="0" max="100" />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="numSets">Number of Sets</Label>
-                          <Input id="numSets" name="numSets" type="number" required placeholder="e.g., 5" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="questionsPerSet">Questions Per Set</Label>
-                            <Input id="questionsPerSet" name="questionsPerSet" type="number" required placeholder="e.g., 20" />
-                        </div>
+                      <Label htmlFor="duration">Duration (minutes)</Label>
+                      <Input id="duration" name="duration" type="number" required placeholder="e.g., 60" />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="questions-file">Questions File (.xlsx)</Label>
-                      <Input id="questions-file" name="questions-file" type="file" required accept=".xlsx" />
-                      <p className="text-xs text-muted-foreground">
-                        Excel columns: Question, Option A, Option B, Option C, Option D, Correct Answer
-                      </p>
+                        <Label htmlFor="passPercentage">Pass Percentage (%)</Label>
+                        <Input id="passPercentage" name="passPercentage" type="number" required placeholder="e.g., 50" min="0" max="100" />
                     </div>
-                    <Button type="submit" disabled={isCreatingExam}>
-                      {isCreatingExam ? 'Creating Exam...' : 'Create Exam'}
-                    </Button>
-                  </form>
-                </TabsContent>
-                 <TabsContent value="coding" className="pt-4">
-                   <form ref={setCodingFormRef} onSubmit={handleCreateCodingProblem} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="coding-title">Problem Title</Label>
-                                <Input id="coding-title" name="coding-title" placeholder="e.g., Two Sum" required />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="language">Programming Language</Label>
-                                <Select name="language" required>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a language" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="javascript">JavaScript</SelectItem>
-                                        <SelectItem value="python">Python</SelectItem>
-                                        <SelectItem value="java">Java</SelectItem>
-                                        <SelectItem value="csharp">C#</SelectItem>
-                                        <SelectItem value="cpp">C++</SelectItem>
-                                        <SelectItem value="c">C</SelectItem>
-                                        <SelectItem value="typescript">TypeScript</SelectItem>
-                                        <SelectItem value="go">Go</SelectItem>
-                                        <SelectItem value="rust">Rust</SelectItem>
-                                        <SelectItem value="swift">Swift</SelectItem>
-                                        <SelectItem value="kotlin">Kotlin</SelectItem>
-                                        <SelectItem value="php">PHP</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="problem-statement">Problem Statement (Supports Markdown)</Label>
-                            <Textarea id="problem-statement" name="problem-statement" placeholder="Describe the coding challenge..." rows={6} required />
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="points-per-case">Points Per Private Test Case</Label>
-                            <Input id="points-per-case" name="points-per-case" type="number" required placeholder="e.g., 10" />
-                        </div>
-
-                        {/* Public Test Cases */}
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-2"><Unlock className="h-4 w-4 text-green-600"/> Public Test Cases</Label>
-                             <p className="text-xs text-muted-foreground">These are visible to the user for basic testing.</p>
-                            <div className="border rounded-lg p-4 space-y-4 bg-secondary/50">
-                                {publicTestCases.map((testCase, index) => (
-                                    <div key={index} className="flex items-center gap-2">
-                                        <div className="grid grid-cols-2 gap-2 flex-grow">
-                                            <Textarea placeholder={`Public Input ${index + 1}`} value={testCase.input} onChange={(e) => handleTestCaseChange('public', index, 'input', e.target.value)} rows={1} />
-                                            <Textarea placeholder={`Public Output ${index + 1}`} value={testCase.output} onChange={(e) => handleTestCaseChange('public', index, 'output', e.target.value)} rows={1} />
-                                        </div>
-                                        {publicTestCases.length > 1 && (
-                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveTestCase('public', index)}>
-                                                <X className="h-4 w-4 text-destructive" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                ))}
-                                <Button type="button" variant="outline" size="sm" onClick={() => handleAddTestCase('public')}>
-                                    <PlusCircle className="mr-2 h-4 w-4"/> Add Public Case
-                                </Button>
-                            </div>
-                        </div>
-
-                        {/* Private Test Cases */}
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-2"><Shield className="h-4 w-4 text-red-600"/> Private Test Cases (Required)</Label>
-                             <p className="text-xs text-muted-foreground">These are hidden and used for final scoring.</p>
-                            <div className="border rounded-lg p-4 space-y-4 bg-secondary/50">
-                                {privateTestCases.map((testCase, index) => (
-                                    <div key={index} className="flex items-center gap-2">
-                                        <div className="grid grid-cols-2 gap-2 flex-grow">
-                                            <Textarea placeholder={`Private Input ${index + 1}`} value={testCase.input} onChange={(e) => handleTestCaseChange('private', index, 'input', e.target.value)} required rows={1}/>
-                                            <Textarea placeholder={`Private Output ${index + 1}`} value={testCase.output} onChange={(e) => handleTestCaseChange('private', index, 'output', e.target.value)} required rows={1}/>
-                                        </div>
-                                        {privateTestCases.length > 1 && (
-                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveTestCase('private', index)}>
-                                                <X className="h-4 w-4 text-destructive" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                ))}
-                                <Button type="button" variant="outline" size="sm" onClick={() => handleAddTestCase('private')}>
-                                    <PlusCircle className="mr-2 h-4 w-4"/> Add Private Case
-                                </Button>
-                            </div>
-                        </div>
-
-                        <Button type="submit" disabled={isCreatingCodingProblem}>
-                            {isCreatingCodingProblem ? 'Creating...' : 'Create Coding Problem'}
-                        </Button>
-                    </form>
-                </TabsContent>
-            </Tabs>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="numSets">Number of Sets</Label>
+                      <Input id="numSets" name="numSets" type="number" required placeholder="e.g., 5" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="questionsPerSet">Questions Per Set</Label>
+                        <Input id="questionsPerSet" name="questionsPerSet" type="number" required placeholder="e.g., 20" />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="questions-file">Questions File (.xlsx)</Label>
+                  <Input id="questions-file" name="questions-file" type="file" required accept=".xlsx" />
+                  <p className="text-xs text-muted-foreground">
+                    Excel columns: Question, Option A, Option B, Option C, Option D, Correct Answer
+                  </p>
+                </div>
+                <Button type="submit" disabled={isCreatingExam}>
+                  {isCreatingExam ? 'Creating Exam...' : 'Create Exam'}
+                </Button>
+              </form>
             </CardContent>
           </Card>
            <Card className="shadow-sm">
