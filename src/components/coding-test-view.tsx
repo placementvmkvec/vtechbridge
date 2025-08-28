@@ -21,17 +21,16 @@ import 'ace-builds/src-noconflict/theme-github';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useTheme } from 'next-themes';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type Props = {
   problem: CodingProblem;
 };
 
-// Mapping from our language names to Ace editor mode names
 const languageModeMap: Record<string, string> = {
     'javascript': 'javascript',
     'python': 'python',
@@ -45,76 +44,113 @@ const languageModeMap: Record<string, string> = {
     'swift': 'swift',
     'kotlin': 'kotlin',
     'php': 'php',
-}
+};
 
-// A placeholder for the structure of a potential result from an API
+type LanguageIdMap = {
+    [key: string]: number;
+};
+
+const languageIdMap: LanguageIdMap = {
+    'javascript': 93,
+    'python': 92,
+    'java': 91,
+    'csharp': 51,
+    'cpp': 54,
+    'c': 50,
+    'typescript': 94,
+    'go': 95,
+    'rust': 93,
+    'swift': 83,
+    'kotlin': 78,
+    'php': 68,
+};
+
 type EvaluationResult = {
+    testCaseIndex: number;
     passed: boolean;
-    message: string;
-    details?: string;
-}
+    output: string;
+    expected: string;
+    error?: string;
+};
 
 export function CodingTestView({ problem }: Props) {
   const { theme } = useTheme();
-  const { toast } = useToast();
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null);
+  const [evaluationResults, setEvaluationResults] = useState<EvaluationResult[]>([]);
   
   const editorTheme = theme === 'dark' ? 'monokai' : 'github';
   const languageMode = languageModeMap[problem.language] || 'javascript';
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    setEvaluationResult(null);
+    setEvaluationResults([]);
 
-    toast({
-        title: "Feature in Progress",
-        description: "The connection to a code execution engine (like Sphere Engine) has not been implemented yet."
-    });
-
-    // =================================================================================
-    // TODO: Implement Sphere Engine API Call Here
-    //
-    // 1. Get your Sphere Engine access token and endpoint from your Sphere Engine account.
-    //
-    // 2. Make a POST request to the Sphere Engine API with the user's `code`,
-    //    the `problem.language`, and the `problem.testCases`.
-    //
-    // 3. The API will return the results of the execution.
-    //
-    // 4. Process the results and update the UI using setEvaluationResult().
-    //
-    // Example conceptual code:
-    //
-    // try {
-    //   const sphereEngineResult = await callSphereEngineAPI({
-    //     accessToken: 'YOUR_SPHERE_ENGINE_TOKEN',
-    //     endpoint: 'YOUR_SPHERE_ENGINE_ENDPOINT',
-    //     language: problem.language,
-    //     sourceCode: code,
-    //     testCases: problem.testCases,
-    //   });
-    //
-    //   // Process the result from Sphere Engine
-    //   const passed = sphereEngineResult.allTestsPassed;
-    //   setEvaluationResult({
-    //      passed: passed,
-    //      message: passed ? "All test cases passed!" : "Some test cases failed.",
-    //      details: sphereEngineResult.feedback,
-    //   });
-    //
-    // } catch (error) {
-    //    toast({ variant: 'destructive', title: 'Evaluation Failed' });
-    // } finally {
-    //    setIsSubmitting(false);
-    // }
-    // =================================================================================
-
-    // For now, we'll just simulate a delay.
-    setTimeout(() => {
+    const languageId = languageIdMap[problem.language];
+    if (!languageId) {
+        alert("Selected language is not supported by the compiler.");
         setIsSubmitting(false);
-    }, 2000);
+        return;
+    }
+    
+    const results: EvaluationResult[] = [];
+
+    for (let i = 0; i < problem.testCases.length; i++) {
+        const testCase = problem.testCases[i];
+        try {
+            const response = await fetch('/api/run-code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    language_id: languageId,
+                    source_code: code,
+                    stdin: testCase.input,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to communicate with compiler API.');
+            }
+            
+            const result = await response.json();
+
+            let output = '';
+            if (result.stdout) {
+                output = result.stdout.trim();
+            } else if (result.stderr) {
+                output = result.stderr.trim();
+            } else if (result.compile_output) {
+                output = result.compile_output.trim();
+            } else if (result.message) {
+                 output = result.message.trim();
+            }
+
+            const passed = output === testCase.output.trim();
+            results.push({
+                testCaseIndex: i,
+                passed,
+                output,
+                expected: testCase.output,
+                error: result.stderr || result.compile_output || (passed ? undefined : `Output did not match expected value.`)
+            });
+
+        } catch (error: any) {
+            results.push({
+                testCaseIndex: i,
+                passed: false,
+                output: "Execution Error",
+                expected: testCase.output,
+                error: error.message
+            });
+        }
+        // Update results after each test case
+        setEvaluationResults([...results]);
+    }
+    
+    setIsSubmitting(false);
   };
 
   return (
@@ -127,13 +163,13 @@ export function CodingTestView({ problem }: Props) {
             </Button>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
             <Card className="flex flex-col">
                 <CardHeader>
                     <CardTitle>Problem Statement</CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1">
-                    <ScrollArea className="h-[calc(100vh-200px)]">
+                <CardContent className="flex-1 overflow-hidden">
+                    <ScrollArea className="h-full">
                         <div className="prose dark:prose-invert max-w-full p-2">
                            <Markdown>{problem.problemStatement}</Markdown>
                         </div>
@@ -141,13 +177,13 @@ export function CodingTestView({ problem }: Props) {
                 </CardContent>
             </Card>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 min-h-0">
                 <Card className="flex-1 flex flex-col">
                     <CardHeader>
                         <CardTitle>Code Editor</CardTitle>
                         <CardDescription>Language: {problem.language}</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-1">
+                    <CardContent className="flex-1 relative">
                         <AceEditor
                             mode={languageMode}
                             theme={editorTheme}
@@ -158,6 +194,7 @@ export function CodingTestView({ problem }: Props) {
                             fontSize={16}
                             width="100%"
                             height="100%"
+                            className="absolute top-0 left-0"
                             setOptions={{
                                 useWorker: false,
                                 enableBasicAutocompletion: true,
@@ -169,18 +206,40 @@ export function CodingTestView({ problem }: Props) {
                         />
                     </CardContent>
                 </Card>
-                {evaluationResult && (
-                    <Alert variant={evaluationResult.passed ? 'default' : 'destructive'}>
-                        {evaluationResult.passed ? 
-                            <CheckCircle className="h-4 w-4" /> : 
-                            <AlertCircle className="h-4 w-4" />
-                        }
-                        <AlertTitle>{evaluationResult.passed ? "Success" : "Failed"}</AlertTitle>
-                        <AlertDescription>
-                            {evaluationResult.message}
-                            {evaluationResult.details && <p className="text-xs mt-2">{evaluationResult.details}</p>}
-                        </AlertDescription>
-                    </Alert>
+                
+                {evaluationResults.length > 0 && (
+                    <Card className="max-h-[250px] overflow-y-auto">
+                        <CardHeader>
+                             <CardTitle>Results</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Tabs defaultValue="testcase-0">
+                                <TabsList>
+                                     {evaluationResults.map((result, index) => (
+                                        <TabsTrigger key={index} value={`testcase-${index}`}>
+                                            Test Case {index + 1}
+                                            {result.passed ? <CheckCircle className="h-4 w-4 ml-2 text-green-500"/> : <XCircle className="h-4 w-4 ml-2 text-destructive"/>}
+                                        </TabsTrigger>
+                                    ))}
+                                </TabsList>
+                                {evaluationResults.map((result, index) => (
+                                    <TabsContent key={index} value={`testcase-${index}`}>
+                                        <Alert variant={result.passed ? 'default' : 'destructive'}>
+                                            <AlertTitle className="flex items-center gap-2">
+                                                {result.passed ? <><CheckCircle className="h-4 w-4" /> Success</> : <><AlertCircle className="h-4 w-4" /> Failed</>}
+                                            </AlertTitle>
+                                            <AlertDescription className="mt-2 font-mono text-xs">
+                                               <p><b>Input:</b> {problem.testCases[index].input}</p>
+                                               <p><b>Expected Output:</b> {result.expected}</p>
+                                               <p><b>Your Output:</b> {result.output}</p>
+                                               {result.error && <p className="mt-2 text-destructive"><b>Error:</b> {result.error}</p>}
+                                            </AlertDescription>
+                                        </Alert>
+                                    </TabsContent>
+                                ))}
+                            </Tabs>
+                        </CardContent>
+                    </Card>
                 )}
             </div>
         </div>
