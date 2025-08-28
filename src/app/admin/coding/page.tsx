@@ -49,11 +49,18 @@ import { Badge } from '@/components/ui/badge';
 
 const ADMIN_EMAIL = 'loganathans@vmkvec.edu.in';
 
+type TestCase = {
+  input: string;
+  output: string;
+}
+
 type CodingProblem = {
   id: string;
   title: string;
   language: string;
-  testCases: any[];
+  publicTestCases: TestCase[];
+  privateTestCases: TestCase[];
+  pointsPerCase: number;
   createdAt: Timestamp;
 };
 
@@ -157,7 +164,9 @@ export default function AdminCodingProblemsPage() {
               <TableRow>
                 <TableHead>Problem Title</TableHead>
                 <TableHead>Language</TableHead>
-                <TableHead>Test Cases</TableHead>
+                <TableHead>Public Cases</TableHead>
+                <TableHead>Private Cases</TableHead>
+                 <TableHead>Points/Case</TableHead>
                 <TableHead className="hidden md:table-cell">Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -175,6 +184,12 @@ export default function AdminCodingProblemsPage() {
                      <TableCell>
                       <Skeleton className="h-4 w-12" />
                     </TableCell>
+                     <TableCell>
+                      <Skeleton className="h-4 w-12" />
+                    </TableCell>
+                     <TableCell>
+                      <Skeleton className="h-4 w-12" />
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <Skeleton className="h-4 w-24" />
                     </TableCell>
@@ -188,7 +203,9 @@ export default function AdminCodingProblemsPage() {
                   <TableRow key={problem.id}>
                     <TableCell className="font-medium">{problem.title}</TableCell>
                     <TableCell><Badge variant="secondary">{problem.language}</Badge></TableCell>
-                    <TableCell>{problem.testCases?.length || 0}</TableCell>
+                    <TableCell>{problem.publicTestCases?.length || 0}</TableCell>
+                    <TableCell>{problem.privateTestCases?.length || 0}</TableCell>
+                    <TableCell>{problem.pointsPerCase || 0}</TableCell>
                     <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                       {problem.createdAt
                         ? formatDistanceToNow(problem.createdAt.toDate(), {
@@ -238,7 +255,7 @@ export default function AdminCodingProblemsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     No coding problems have been created yet.
                   </TableCell>
                 </TableRow>
@@ -250,5 +267,3 @@ export default function AdminCodingProblemsPage() {
     </div>
   );
 }
-
-    

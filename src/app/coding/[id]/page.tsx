@@ -9,12 +9,19 @@ import { CodingTestView } from '@/components/coding-test-view';
 import { Skeleton } from '@/components/ui/skeleton';
 
 
+export type TestCase = {
+  input: string;
+  output: string;
+}
+
 export type CodingProblem = {
   id: string;
   title: string;
   language: string;
   problemStatement: string;
-  testCases: { input: string; output: string }[];
+  publicTestCases: TestCase[];
+  privateTestCases: TestCase[];
+  pointsPerCase: number;
   createdAt: Timestamp;
 };
 

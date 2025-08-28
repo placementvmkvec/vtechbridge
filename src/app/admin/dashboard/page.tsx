@@ -50,7 +50,7 @@ import {
   ChartLegendContent
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Pie, PieChart, Cell } from "recharts";
-import { ClipboardList, Users, CheckCircle, Upload, Trash2, Eye, BarChart2, Code, PlusCircle, X } from "lucide-react";
+import { ClipboardList, Users, CheckCircle, Upload, Trash2, Eye, BarChart2, Code, PlusCircle, X, Shield, Unlock } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -123,7 +123,8 @@ export default function AdminDashboardPage() {
   const [examsMap, setExamsMap] = useState<Record<string, ExamData>>({});
   const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
 
-  const [testCases, setTestCases] = useState<TestCase[]>([{ input: '', output: '' }]);
+  const [publicTestCases, setPublicTestCases] = useState<TestCase[]>([{ input: '', output: '' }]);
+  const [privateTestCases, setPrivateTestCases] = useState<TestCase[]>([{ input: '', output: '' }]);
 
 
   useEffect(() => {
@@ -345,19 +346,32 @@ export default function AdminDashboardPage() {
     }
   }
 
-  const handleAddTestCase = () => {
-    setTestCases([...testCases, { input: '', output: '' }]);
+  const handleAddTestCase = (type: 'public' | 'private') => {
+    if (type === 'public') {
+      setPublicTestCases([...publicTestCases, { input: '', output: '' }]);
+    } else {
+      setPrivateTestCases([...privateTestCases, { input: '', output: '' }]);
+    }
   };
 
-  const handleRemoveTestCase = (index: number) => {
-    const newTestCases = testCases.filter((_, i) => i !== index);
-    setTestCases(newTestCases);
+  const handleRemoveTestCase = (type: 'public' | 'private', index: number) => {
+    if (type === 'public') {
+      setPublicTestCases(publicTestCases.filter((_, i) => i !== index));
+    } else {
+      setPrivateTestCases(privateTestCases.filter((_, i) => i !== index));
+    }
   };
 
-  const handleTestCaseChange = (index: number, field: 'input' | 'output', value: string) => {
-    const newTestCases = [...testCases];
-    newTestCases[index][field] = value;
-    setTestCases(newTestCases);
+  const handleTestCaseChange = (type: 'public' | 'private', index: number, field: 'input' | 'output', value: string) => {
+    if (type === 'public') {
+      const newTestCases = [...publicTestCases];
+      newTestCases[index][field] = value;
+      setPublicTestCases(newTestCases);
+    } else {
+        const newTestCases = [...privateTestCases];
+        newTestCases[index][field] = value;
+        setPrivateTestCases(newTestCases);
+    }
   };
 
   const handleCreateCodingProblem = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -371,11 +385,13 @@ export default function AdminDashboardPage() {
     const title = formData.get('coding-title') as string;
     const language = formData.get('language') as string;
     const problemStatement = formData.get('problem-statement') as string;
+    const pointsPerCase = Number(formData.get('points-per-case'));
 
-    const finalTestCases = testCases.filter(tc => tc.input.trim() !== '' && tc.output.trim() !== '');
+    const finalPublicTestCases = publicTestCases.filter(tc => tc.input.trim() !== '' && tc.output.trim() !== '');
+    const finalPrivateTestCases = privateTestCases.filter(tc => tc.input.trim() !== '' && tc.output.trim() !== '');
 
-    if (!title || !language || !problemStatement || finalTestCases.length === 0) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Please fill out all fields and provide at least one valid test case.' });
+    if (!title || !language || !problemStatement || !pointsPerCase || finalPrivateTestCases.length === 0) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please fill out all required fields and provide at least one valid private test case.' });
       setIsCreatingCodingProblem(false);
       return;
     }
@@ -386,13 +402,17 @@ export default function AdminDashboardPage() {
         title,
         language,
         problemStatement,
-        testCases: finalTestCases,
+        pointsPerCase,
+        publicTestCases: finalPublicTestCases,
+        privateTestCases: finalPrivateTestCases,
         createdAt: new Date(),
       });
       
       toast({ title: 'Success!', description: `Successfully created coding problem: "${title}"` });
       form.reset();
-      setTestCases([{ input: '', output: '' }]);
+      setPublicTestCases([{ input: '', output: '' }]);
+      setPrivateTestCases([{ input: '', output: '' }]);
+
 
     } catch (error: any) {
         console.error('Error creating coding problem:', error);
@@ -510,71 +530,91 @@ export default function AdminDashboardPage() {
                 </TabsContent>
                  <TabsContent value="coding" className="pt-4">
                    <form ref={setCodingFormRef} onSubmit={handleCreateCodingProblem} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="coding-title">Problem Title</Label>
-                            <Input id="coding-title" name="coding-title" placeholder="e.g., Two Sum" required />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="coding-title">Problem Title</Label>
+                                <Input id="coding-title" name="coding-title" placeholder="e.g., Two Sum" required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="language">Programming Language</Label>
+                                <Select name="language" required>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a language" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="javascript">JavaScript</SelectItem>
+                                        <SelectItem value="python">Python</SelectItem>
+                                        <SelectItem value="java">Java</SelectItem>
+                                        <SelectItem value="csharp">C#</SelectItem>
+                                        <SelectItem value="cpp">C++</SelectItem>
+                                        <SelectItem value="c">C</SelectItem>
+                                        <SelectItem value="typescript">TypeScript</SelectItem>
+                                        <SelectItem value="go">Go</SelectItem>
+                                        <SelectItem value="rust">Rust</SelectItem>
+                                        <SelectItem value="swift">Swift</SelectItem>
+                                        <SelectItem value="kotlin">Kotlin</SelectItem>
+                                        <SelectItem value="php">PHP</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="language">Programming Language</Label>
-                             <Select name="language" required>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a language" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="javascript">JavaScript</SelectItem>
-                                    <SelectItem value="python">Python</SelectItem>
-                                    <SelectItem value="java">Java</SelectItem>
-                                    <SelectItem value="csharp">C#</SelectItem>
-                                    <SelectItem value="cpp">C++</SelectItem>
-                                    <SelectItem value="c">C</SelectItem>
-                                    <SelectItem value="typescript">TypeScript</SelectItem>
-                                    <SelectItem value="go">Go</SelectItem>
-                                    <SelectItem value="rust">Rust</SelectItem>
-                                    <SelectItem value="swift">Swift</SelectItem>
-                                    <SelectItem value="kotlin">Kotlin</SelectItem>
-                                    <SelectItem value="php">PHP</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
                         <div className="space-y-2">
-                            <Label htmlFor="problem-statement">Problem Statement</Label>
+                            <Label htmlFor="problem-statement">Problem Statement (Supports Markdown)</Label>
                             <Textarea id="problem-statement" name="problem-statement" placeholder="Describe the coding challenge..." rows={6} required />
                         </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="points-per-case">Points Per Private Test Case</Label>
+                            <Input id="points-per-case" name="points-per-case" type="number" required placeholder="e.g., 10" />
+                        </div>
+
+                        {/* Public Test Cases */}
                         <div className="space-y-2">
-                            <Label>Test Cases</Label>
-                            <div className="border rounded-lg p-4 space-y-4">
-                                {testCases.map((testCase, index) => (
+                            <Label className="flex items-center gap-2"><Unlock className="h-4 w-4 text-green-600"/> Public Test Cases</Label>
+                             <p className="text-xs text-muted-foreground">These are visible to the user for basic testing.</p>
+                            <div className="border rounded-lg p-4 space-y-4 bg-secondary/50">
+                                {publicTestCases.map((testCase, index) => (
                                     <div key={index} className="flex items-center gap-2">
                                         <div className="grid grid-cols-2 gap-2 flex-grow">
-                                            <Input 
-                                                placeholder={`Input ${index + 1}`} 
-                                                value={testCase.input}
-                                                onChange={(e) => handleTestCaseChange(index, 'input', e.target.value)}
-                                                required
-                                            />
-                                            <Input 
-                                                placeholder={`Expected Output ${index + 1}`} 
-                                                value={testCase.output}
-                                                onChange={(e) => handleTestCaseChange(index, 'output', e.target.value)}
-                                                required
-                                            />
+                                            <Textarea placeholder={`Public Input ${index + 1}`} value={testCase.input} onChange={(e) => handleTestCaseChange('public', index, 'input', e.target.value)} rows={1} />
+                                            <Textarea placeholder={`Public Output ${index + 1}`} value={testCase.output} onChange={(e) => handleTestCaseChange('public', index, 'output', e.target.value)} rows={1} />
                                         </div>
-                                        {testCases.length > 1 && (
-                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveTestCase(index)}>
+                                        {publicTestCases.length > 1 && (
+                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveTestCase('public', index)}>
                                                 <X className="h-4 w-4 text-destructive" />
                                             </Button>
                                         )}
                                     </div>
                                 ))}
-                                <Button type="button" variant="outline" size="sm" onClick={handleAddTestCase}>
-                                    <PlusCircle className="mr-2 h-4 w-4"/>
-                                    Add Test Case
+                                <Button type="button" variant="outline" size="sm" onClick={() => handleAddTestCase('public')}>
+                                    <PlusCircle className="mr-2 h-4 w-4"/> Add Public Case
                                 </Button>
                             </div>
-                             <p className="text-xs text-muted-foreground">
-                                Provide inputs and their expected outputs. At least one test case is required.
-                            </p>
                         </div>
+
+                        {/* Private Test Cases */}
+                        <div className="space-y-2">
+                            <Label className="flex items-center gap-2"><Shield className="h-4 w-4 text-red-600"/> Private Test Cases (Required)</Label>
+                             <p className="text-xs text-muted-foreground">These are hidden and used for final scoring.</p>
+                            <div className="border rounded-lg p-4 space-y-4 bg-secondary/50">
+                                {privateTestCases.map((testCase, index) => (
+                                    <div key={index} className="flex items-center gap-2">
+                                        <div className="grid grid-cols-2 gap-2 flex-grow">
+                                            <Textarea placeholder={`Private Input ${index + 1}`} value={testCase.input} onChange={(e) => handleTestCaseChange('private', index, 'input', e.target.value)} required rows={1}/>
+                                            <Textarea placeholder={`Private Output ${index + 1}`} value={testCase.output} onChange={(e) => handleTestCaseChange('private', index, 'output', e.target.value)} required rows={1}/>
+                                        </div>
+                                        {privateTestCases.length > 1 && (
+                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveTestCase('private', index)}>
+                                                <X className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                ))}
+                                <Button type="button" variant="outline" size="sm" onClick={() => handleAddTestCase('private')}>
+                                    <PlusCircle className="mr-2 h-4 w-4"/> Add Private Case
+                                </Button>
+                            </div>
+                        </div>
+
                         <Button type="submit" disabled={isCreatingCodingProblem}>
                             {isCreatingCodingProblem ? 'Creating...' : 'Create Coding Problem'}
                         </Button>
@@ -700,5 +740,3 @@ export default function AdminDashboardPage() {
       </div>
   );
 }
-
-    
