@@ -35,6 +35,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -439,6 +446,27 @@ export default function AdminDashboardPage() {
                         <div className="space-y-2">
                             <Label htmlFor="coding-title">Problem Title</Label>
                             <Input id="coding-title" name="coding-title" placeholder="e.g., Two Sum" />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="language">Programming Language</Label>
+                             <Select name="language">
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a language" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="javascript">JavaScript</SelectItem>
+                                    <SelectItem value="python">Python</SelectItem>
+                                    <SelectItem value="java">Java</SelectItem>
+                                    <SelectItem value="csharp">C#</SelectItem>
+                                    <SelectItem value="cpp">C++</SelectItem>
+                                    <SelectItem value="typescript">TypeScript</SelectItem>
+                                    <SelectItem value="go">Go</SelectItem>
+                                    <SelectItem value="rust">Rust</SelectItem>
+                                    <SelectItem value="swift">Swift</SelectItem>
+                                    <SelectItem value="kotlin">Kotlin</SelectItem>
+                                    <SelectItem value="php">PHP</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="problem-statement">Problem Statement</Label>
