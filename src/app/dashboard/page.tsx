@@ -12,11 +12,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Clock, FileText, ArrowRight, CheckCircle } from "lucide-react";
+import { Clock, FileText, ArrowRight, CheckCircle, Code } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { onAuthStateChanged, User } from "firebase/auth";
+import { Badge } from "@/components/ui/badge";
 
 type Exam = {
   id: string;
@@ -26,9 +27,17 @@ type Exam = {
   duration: number;
 };
 
+type CodingProblem = {
+  id: string;
+  title: string;
+  language: string;
+  problemStatement: string;
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [exams, setExams] = useState<Exam[]>([]);
+  const [codingProblems, setCodingProblems] = useState<CodingProblem[]>([]);
   const [completedExams, setCompletedExams] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
@@ -36,7 +45,7 @@ export default function DashboardPage() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        fetchExams(currentUser.uid);
+        fetchAssessments(currentUser.uid);
       } else {
         setLoading(false);
       }
@@ -44,7 +53,8 @@ export default function DashboardPage() {
     return () => unsubscribe();
   }, []);
 
-  const fetchExams = async (userId: string) => {
+  const fetchAssessments = async (userId: string) => {
+    setLoading(true);
     try {
       // Fetch all exams
       const examsCollectionRef = collection(db, 'exams');
@@ -54,6 +64,15 @@ export default function DashboardPage() {
         ...doc.data()
       })) as Exam[];
       setExams(fetchedExams);
+      
+      // Fetch all coding problems
+      const codingProblemsCollectionRef = collection(db, 'coding_problems');
+      const codingProblemsSnapshot = await getDocs(codingProblemsCollectionRef);
+      const fetchedCodingProblems = codingProblemsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as CodingProblem[];
+      setCodingProblems(fetchedCodingProblems);
 
       // Fetch user's submissions to check for completed exams
       const submissionsQuery = query(collection(db, "submissions"), where("userId", "==", userId));
@@ -62,7 +81,7 @@ export default function DashboardPage() {
       setCompletedExams(completed);
 
     } catch (error) {
-      console.error("Error fetching exams: ", error);
+      console.error("Error fetching data: ", error);
     } finally {
       setLoading(false);
     }
@@ -73,12 +92,12 @@ export default function DashboardPage() {
       <main className="container mx-auto p-4 md:p-8">
         <div className="mb-8">
           <h1 className="font-headline text-3xl md:text-4xl font-bold">Welcome Back!</h1>
-          <p className="text-muted-foreground mt-2">Here are your available exams. Good luck!</p>
+          <p className="text-muted-foreground mt-2">Here are your available assessments. Good luck!</p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {loading ? (
-             Array.from({ length: 3 }).map((_, index) => (
+             Array.from({ length: 6 }).map((_, index) => (
                 <Card key={index} className="h-[280px]">
                     <CardHeader>
                         <Skeleton className="h-6 w-3/4" />
@@ -99,8 +118,9 @@ export default function DashboardPage() {
                     </CardFooter>
                 </Card>
              ))
-          ) : exams.length > 0 ? (
-            exams.map((exam) => {
+          ) : exams.length > 0 || codingProblems.length > 0 ? (
+            <>
+            {exams.map((exam) => {
               const isCompleted = completedExams.has(exam.id);
               return (
                 <div key={exam.id} className={`flip-card h-[280px] ${isCompleted ? 'opacity-70 pointer-events-none' : ''}`}>
@@ -152,11 +172,55 @@ export default function DashboardPage() {
                   </div>
                 </div>
               )
-            })
+            })}
+             {codingProblems.map((problem) => (
+                <div key={problem.id} className="flip-card h-[280px]">
+                  <div className="flip-card-inner">
+                    <div className="flip-card-front">
+                       <Card className="flex flex-col h-full shadow-lg border-transparent hover:border-primary transition-colors">
+                        <CardHeader>
+                          <CardTitle className="font-headline text-xl flex items-center justify-between">
+                            {problem.title}
+                            <Badge variant="secondary">{problem.language}</Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex-grow space-y-4">
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <Code className="mr-2 h-4 w-4" />
+                            <span>Coding Challenge</span>
+                          </div>
+                        </CardContent>
+                        <CardFooter>
+                           <div className="text-sm text-primary font-semibold">
+                               Hover to see details & start
+                            </div>
+                        </CardFooter>
+                      </Card>
+                    </div>
+                    <div className="flip-card-back">
+                      <Card className="flex flex-col h-full bg-card shadow-lg border-primary">
+                          <CardHeader>
+                            <CardTitle className="font-headline text-xl">{problem.title}</CardTitle>
+                             <CardDescription className="line-clamp-3">{problem.problemStatement}</CardDescription>
+                          </CardHeader>
+                          <CardContent className="flex-grow" />
+                          <CardFooter>
+                            <Link href={`/coding/${problem.id}`} className="w-full">
+                              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105">
+                                Start Challenge <ArrowRight className="ml-2 h-4 w-4" />
+                              </Button>
+                            </Link>
+                          </CardFooter>
+                        </Card>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
           ) : (
             <div className="col-span-full text-center py-12 bg-card rounded-lg">
-              <h2 className="text-xl font-semibold">No Exams Available</h2>
-              <p className="text-muted-foreground mt-2">Please check back later. Your administrator has not assigned any exams yet.</p>
+              <h2 className="text-xl font-semibold">No Assessments Available</h2>
+              <p className="text-muted-foreground mt-2">Please check back later. Your administrator has not assigned any assessments yet.</p>
             </div>
           )}
         </div>
