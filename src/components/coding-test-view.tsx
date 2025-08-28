@@ -96,7 +96,7 @@ export function CodingTestView({ problem }: Props) {
   const editorTheme = theme === 'dark' ? 'monokai' : 'github';
   const languageMode = languageModeMap[problem.language] || 'javascript';
   
-  const executeCode = async (sourceCode: string, input: string) => {
+ const executeCode = async (sourceCode: string, input: string) => {
     const languageVersion = languageVersionMap[problem.language];
      try {
          const response = await fetch('https://emkc.org/api/v2/piston/execute', {
@@ -134,32 +134,32 @@ export function CodingTestView({ problem }: Props) {
   }
 
   const handleRunCode = async () => {
-      setIsRunning(true);
-      setEvaluationResults([]);
-      setTotalScore(null);
-      
-      const allTestCases = [
-        ...problem.publicTestCases.map(tc => ({...tc, isPublic: true})),
-        ...problem.privateTestCases.map(tc => ({...tc, isPublic: false})),
-      ];
-      
-      const results: EvaluationResult[] = [];
-      for (let i = 0; i < allTestCases.length; i++) {
+    setIsRunning(true);
+    setEvaluationResults([]);
+    setTotalScore(null);
+    
+    const publicCases = problem.publicTestCases.map(tc => ({ ...tc, isPublic: true }));
+    const privateCases = problem.privateTestCases.map(tc => ({ ...tc, isPublic: false }));
+    const allTestCases = [...publicCases, ...privateCases];
+    
+    const results: EvaluationResult[] = [];
+    for (let i = 0; i < allTestCases.length; i++) {
         const tc = allTestCases[i];
         const executionResult = await executeCode(code, tc.input);
         results.push({
             ...executionResult,
             passed: !executionResult.error && executionResult.output === tc.output,
-            testCaseIndex: i,
+            testCaseIndex: tc.isPublic ? i : i - publicCases.length,
             isPublic: tc.isPublic,
             expected: tc.output,
             input: tc.input
         });
-      }
-      
-      setEvaluationResults(results);
-      setIsRunning(false);
-  }
+    }
+    
+    setEvaluationResults(results);
+    setIsRunning(false);
+}
+
 
   const handleCustomRun = async () => {
     setIsCustomRunning(true);
@@ -169,7 +169,7 @@ export function CodingTestView({ problem }: Props) {
     setIsCustomRunning(false);
   }
 
-  const handleSubmit = async () => {
+ const handleSubmit = async () => {
     if (evaluationResults.length === 0) {
         alert("Please run your code against the test cases at least once before submitting.");
         return;
@@ -197,7 +197,7 @@ export function CodingTestView({ problem }: Props) {
             <div className="flex items-center gap-2">
                  <Button onClick={handleRunCode} disabled={isLoading || isSubmitting} variant="secondary">
                     {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                    {isRunning ? 'Running...' : 'Run All Tests'}
+                    {isRunning ? 'Running...' : 'Run Code'}
                 </Button>
                 <Button onClick={handleSubmit} disabled={isLoading || evaluationResults.length === 0 || isSubmitting}>
                     {isSubmitting ? 'Submitted' : <Shield className="mr-2 h-4 w-4" />}
@@ -207,7 +207,7 @@ export function CodingTestView({ problem }: Props) {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 min-h-0">
                 <Card className="flex-1 flex flex-col">
                     <CardHeader>
                         <CardTitle>Problem Statement</CardTitle>
@@ -242,131 +242,124 @@ export function CodingTestView({ problem }: Props) {
             </div>
             
             <div className="flex flex-col gap-4 min-h-0">
-                <Card className="flex-1 flex flex-col">
-                    <CardHeader>
-                        <CardTitle>Code Editor</CardTitle>
-                        <CardDescription>Language: {problem.language}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 relative">
-                        <AceEditor
-                            mode={languageMode}
-                            theme={editorTheme}
-                            onChange={setCode}
-                            name="code-editor"
-                            editorProps={{ $blockScrolling: true }}
-                            value={code}
-                            fontSize={16}
-                            width="100%"
-                            height="100%"
-                            className="absolute top-0 left-0"
-                            setOptions={{
-                                useWorker: false,
-                                enableBasicAutocompletion: true,
-                                enableLiveAutocompletion: true,
-                                enableSnippets: true,
-                                showLineNumbers: true,
-                                tabSize: 2,
-                            }}
-                        />
-                    </CardContent>
-                </Card>
-                
-                 <Card className="max-h-[350px] flex flex-col">
-                    <Tabs defaultValue="results" className="w-full h-full flex flex-col">
-                         <TabsList className="mx-6 mt-6 grid w-auto grid-cols-2 self-start">
-                            <TabsTrigger value="results">Test Results</TabsTrigger>
-                            <TabsTrigger value="custom">Custom Input</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="results" className="flex-1 overflow-hidden">
-                             <CardHeader>
-                                <CardTitle>Test Results</CardTitle>
-                                <CardDescription>Results from your latest run will appear here.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-2 overflow-y-auto h-full">
-                                {isRunning && (
-                                    <div className="flex items-center justify-center p-8 gap-2 text-muted-foreground">
-                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                        <span>Evaluating your code...</span>
-                                    </div>
-                                )}
-                                {!isRunning && evaluationResults.length === 0 && (
-                                    <div className="text-center text-sm text-muted-foreground p-4">
-                                        Click "Run All Tests" to check your solution.
-                                    </div>
-                                )}
-                                {!isRunning && evaluationResults.length > 0 && (
-                                    <ScrollArea className="h-full pr-4">
-                                        <div className="space-y-2">
-                                        {evaluationResults.map((result) => {
-                                            const testCaseNumber = result.isPublic 
-                                                ? result.testCaseIndex + 1 
-                                                : result.testCaseIndex - problem.publicTestCases.length + 1;
-                                            
-                                            return (
-                                                <Alert key={`${result.isPublic}-${result.testCaseIndex}`} variant={result.passed ? 'default' : 'destructive'}>
-                                                    <AlertTitle className="flex items-center gap-2">
-                                                        {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                                                        <span>
-                                                            {result.isPublic ? `Public Test Case #${testCaseNumber}` : `Private Test Case #${testCaseNumber}`} - 
-                                                            <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
-                                                        </span>
-                                                    </AlertTitle>
-                                                    {result.isPublic && (
-                                                        <AlertDescription asChild>
-                                                            <div className="mt-2 font-mono text-xs space-y-1">
-                                                                <p><b>Input:</b> {result.input}</p>
-                                                                <p><b>Expected:</b> {result.expected}</p>
-                                                                <p><b>Your Output:</b> {result.output}</p>
-                                                                {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
-                                                            </div>
-                                                        </AlertDescription>
-                                                    )}
-                                                </Alert>
-                                            )
-                                        })}
+                <div className="flex-1 flex flex-col gap-4 min-h-0">
+                    <Card className="flex-grow flex flex-col">
+                         <CardHeader>
+                            <CardTitle>Code Editor</CardTitle>
+                            <CardDescription>Language: {problem.language}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-1 relative">
+                            <AceEditor
+                                mode={languageMode}
+                                theme={editorTheme}
+                                onChange={setCode}
+                                name="code-editor"
+                                editorProps={{ $blockScrolling: true }}
+                                value={code}
+                                fontSize={16}
+                                width="100%"
+                                height="100%"
+                                className="absolute top-0 left-0"
+                                setOptions={{
+                                    useWorker: false,
+                                    enableBasicAutocompletion: true,
+                                    enableLiveAutocompletion: true,
+                                    enableSnippets: true,
+                                    showLineNumbers: true,
+                                    tabSize: 2,
+                                }}
+                            />
+                        </CardContent>
+                    </Card>
+                    <Card className="flex-shrink-0 h-1/3">
+                        <Tabs defaultValue="results" className="h-full flex flex-col">
+                             <TabsList className="mx-4 mt-4 grid w-auto grid-cols-2 self-start">
+                                <TabsTrigger value="results">Test Results</TabsTrigger>
+                                <TabsTrigger value="custom">Custom Input</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="results" className="flex-1 overflow-hidden p-4">
+                                 <ScrollArea className="h-full">
+                                    {isRunning && (
+                                        <div className="flex items-center justify-center h-full gap-2 text-muted-foreground">
+                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                            <span>Evaluating your code...</span>
                                         </div>
-                                    </ScrollArea>
-                                )}
-                            </CardContent>
-                        </TabsContent>
-                        <TabsContent value="custom" className="flex-1 flex flex-col p-4 space-y-4">
-                            <div>
-                                <Label htmlFor="custom-input" className="mb-2 block">Custom Input (stdin)</Label>
-                                <Textarea id="custom-input" value={customInput} onChange={(e) => setCustomInput(e.target.value)} placeholder="Enter your test input here..." rows={3} />
-                            </div>
-                            <Button onClick={handleCustomRun} disabled={isLoading || isSubmitting} className="self-start">
-                                {isCustomRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Play className="mr-2 h-4 w-4"/>}
-                                {isCustomRunning ? 'Running...' : 'Run with Custom Input'}
-                            </Button>
-                            {isCustomRunning && (
-                                 <div className="flex items-center justify-center p-8 gap-2 text-muted-foreground">
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                    <span>Running your code...</span>
-                                </div>
-                            )}
-                            {customRunResult && !isCustomRunning && (
-                                <div className="space-y-2">
-                                    <Label>Your Output</Label>
-                                    <pre className="p-4 bg-secondary rounded-lg font-mono text-sm overflow-x-auto">
-                                        <code>{customRunResult.output}</code>
-                                    </pre>
-                                     {customRunResult.error && (
-                                        <>
-                                         <Label className="text-destructive">Error</Label>
-                                         <pre className="p-4 bg-destructive/10 text-destructive rounded-lg font-mono text-sm overflow-x-auto">
-                                            <code>{customRunResult.error}</code>
-                                         </pre>
-                                        </>
                                     )}
+                                    {!isRunning && evaluationResults.length === 0 && (
+                                        <div className="text-center text-sm text-muted-foreground h-full flex items-center justify-center">
+                                            Click "Run Code" to check your solution against test cases.
+                                        </div>
+                                    )}
+                                    {!isRunning && evaluationResults.length > 0 && (
+                                        <div className="space-y-2">
+                                            {evaluationResults.map((result, index) => {
+                                                const privateTestCaseNumber = evaluationResults.filter(r => !r.isPublic).findIndex(r => r.testCaseIndex === result.testCaseIndex);
+                                                const testCaseNumber = result.isPublic ? result.testCaseIndex + 1 : privateTestCaseNumber + 1;
+
+                                                return (
+                                                    <Alert key={index} variant={result.passed ? 'default' : 'destructive'}>
+                                                        <AlertTitle className="flex items-center gap-2">
+                                                            {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                                                            <span>
+                                                                {result.isPublic ? `Public Test Case #${testCaseNumber}` : `Private Test Case #${testCaseNumber}`} - 
+                                                                <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
+                                                            </span>
+                                                        </AlertTitle>
+                                                        {result.isPublic && !result.passed && (
+                                                            <AlertDescription asChild>
+                                                                <div className="mt-2 font-mono text-xs space-y-1">
+                                                                    <p><b>Input:</b> {result.input}</p>
+                                                                    <p><b>Expected:</b> {result.expected}</p>
+                                                                    <p><b>Your Output:</b> {result.output}</p>
+                                                                    {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
+                                                                </div>
+                                                            </AlertDescription>
+                                                        )}
+                                                    </Alert>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+                                </ScrollArea>
+                            </TabsContent>
+                            <TabsContent value="custom" className="flex-1 flex flex-col p-4 space-y-4 overflow-hidden">
+                                <div className="flex-1 flex flex-col space-y-2">
+                                    <div className="grid grid-cols-2 gap-4 flex-1">
+                                        <div className="flex flex-col space-y-2">
+                                            <Label htmlFor="custom-input" className="mb-1">Custom Input (stdin)</Label>
+                                            <Textarea id="custom-input" value={customInput} onChange={(e) => setCustomInput(e.target.value)} placeholder="Enter your test input here..." className="flex-1 font-mono text-sm" />
+                                        </div>
+                                        <div className="flex flex-col space-y-2">
+                                            <Label className="mb-1">Your Output</Label>
+                                            <ScrollArea className="border rounded-md bg-secondary h-full">
+                                                {isCustomRunning && (
+                                                    <div className="flex items-center justify-center h-full gap-2 text-muted-foreground">
+                                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                                    </div>
+                                                )}
+                                                {customRunResult && !isCustomRunning && (
+                                                    <div className="p-4 space-y-2 font-mono text-sm">
+                                                        <pre><code>{customRunResult.output}</code></pre>
+                                                         {customRunResult.error && (
+                                                             <pre className="text-destructive"><code>{customRunResult.error}</code></pre>
+                                                         )}
+                                                    </div>
+                                                )}
+                                            </ScrollArea>
+                                        </div>
+                                    </div>
+                                    <Button onClick={handleCustomRun} disabled={isLoading || isSubmitting} className="self-start">
+                                        {isCustomRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Play className="mr-2 h-4 w-4"/>}
+                                        {isCustomRunning ? 'Running...' : 'Run Custom Input'}
+                                    </Button>
                                 </div>
-                            )}
-                        </TabsContent>
-                    </Tabs>
-                </Card>
+                            </TabsContent>
+                        </Tabs>
+                    </Card>
+                </div>
             </div>
         </div>
     </div>
   );
 }
 
-    
