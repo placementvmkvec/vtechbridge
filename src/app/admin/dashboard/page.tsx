@@ -102,11 +102,11 @@ export default function AdminDashboardPage() {
   const [isCreatingExam, setIsCreatingExam] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [stats, setStats({ totalExams: 0, totalUsers: 0, submissionsToday: 0 });
-  const [chartData, setChartData(any[]>([]);
-  const [pieChartData, setPieChartData(any[]>([]);
-  const [examsMap, setExamsMap(Record<string, ExamData>>({});
-  const [submissionToDelete, setSubmissionToDelete<Submission | null>(null);
+  const [stats, setStats] = useState({ totalExams: 0, totalUsers: 0, submissionsToday: 0 });
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [pieChartData, setPieChartData] = useState<any[]>([]);
+  const [examsMap, setExamsMap] = useState<Record<string, ExamData>>({});
+  const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
 
 
   useEffect(() => {
@@ -584,3 +584,5 @@ export default function AdminDashboardPage() {
       </div>
   );
 }
+
+    
