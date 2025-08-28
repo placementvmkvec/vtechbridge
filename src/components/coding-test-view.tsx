@@ -27,6 +27,7 @@ import Markdown from 'react-markdown';
 import { useTheme } from 'next-themes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from './ui/textarea';
+import { Label } from './ui/label';
 
 type Props = {
   problem: CodingProblem;
