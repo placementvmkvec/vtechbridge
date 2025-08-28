@@ -51,18 +51,18 @@ type LanguageIdMap = {
 };
 
 const languageIdMap: LanguageIdMap = {
-    'javascript': 93,
-    'python': 92,
-    'java': 91,
-    'csharp': 51,
-    'cpp': 54,
-    'c': 50,
-    'typescript': 94,
-    'go': 95,
-    'rust': 93,
-    'swift': 83,
-    'kotlin': 78,
-    'php': 68,
+    'javascript': 93, // Judge0 ID for JavaScript (Node.js)
+    'python': 71, // Judge0 ID for Python 3.8.1
+    'java': 62, // Judge0 ID for Java (OpenJDK 13.0.1)
+    'csharp': 51, // Judge- ID for C# (Mono 6.6.0.161)
+    'cpp': 54, // Judge0 ID for C++ (GCC 9.2.0)
+    'c': 50, // Judge0 ID for C (GCC 9.2.0)
+    'typescript': 74, // Judge0 ID for TypeScript (3.7.4)
+    'go': 60, // Judge0 ID for Go (1.13.5)
+    'rust': 73, // Judge0 ID for Rust (1.40.0)
+    'swift': 83, // Judge0 ID for Swift (5.2.3)
+    'kotlin': 78, // Judge0 ID for Kotlin (1.3.70)
+    'php': 68, // Judge0 ID for PHP (7.4.1)
 };
 
 type EvaluationResult = {
@@ -110,31 +110,32 @@ export function CodingTestView({ problem }: Props) {
                 }),
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to communicate with compiler API.');
-            }
-            
             const result = await response.json();
+            
+            if (!response.ok) {
+                const errorMessage = result.error || (result.details ? JSON.stringify(result.details) : 'Failed to execute code.');
+                throw new Error(errorMessage);
+            }
 
             let output = '';
-            if (result.stdout) {
-                output = result.stdout.trim();
-            } else if (result.stderr) {
-                output = result.stderr.trim();
-            } else if (result.compile_output) {
-                output = result.compile_output.trim();
-            } else if (result.message) {
-                 output = result.message.trim();
-            }
+            let hasError = false;
+            let errorMessage = '';
 
-            const passed = output === testCase.output.trim();
+            if (result.status?.id === 3) { // Status 3 is "Accepted"
+                output = result.stdout ? result.stdout.trim() : '';
+            } else { // Any other status is considered an error (Compile Error, Runtime Error, etc.)
+                hasError = true;
+                errorMessage = result.stderr || result.compile_output || `Execution failed with status: ${result.status?.description}`;
+                output = errorMessage;
+            }
+            
+            const passed = !hasError && output === testCase.output.trim();
             results.push({
                 testCaseIndex: i,
                 passed,
                 output,
                 expected: testCase.output,
-                error: result.stderr || result.compile_output || (passed ? undefined : `Output did not match expected value.`)
+                error: hasError ? errorMessage : undefined,
             });
 
         } catch (error: any) {

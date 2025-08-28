@@ -29,8 +29,16 @@ export async function POST(req: Request) {
 
   try {
     const response = await fetch('https://online-compiler.p.rapidapi.com/submissions?base64_encoded=false&wait=true', options);
+    
+    if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Compiler API Error:', errorData);
+        return NextResponse.json({ error: 'Failed to execute code.', details: errorData }, { status: response.status });
+    }
+
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });
+
   } catch (error: any) {
     console.error('Error calling compiler API:', error);
     return NextResponse.json({ error: 'Failed to connect to the compiler service.', details: error.message }, { status: 500 });
