@@ -43,7 +43,7 @@ import {
   ChartLegendContent
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Pie, PieChart, Cell } from "recharts";
-import { ClipboardList, Users, CheckCircle, Upload, Trash2, Eye, BarChart2 } from "lucide-react";
+import { ClipboardList, Users, CheckCircle, Upload, Trash2, Eye, BarChart2, Code } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,6 +51,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import * as xlsx from 'xlsx';
 import { formatDistanceToNow } from 'date-fns';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 
 
 const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
@@ -96,11 +102,11 @@ export default function AdminDashboardPage() {
   const [isCreatingExam, setIsCreatingExam] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [stats, setStats] = useState({ totalExams: 0, totalUsers: 0, submissionsToday: 0 });
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [pieChartData, setPieChartData] = useState<any[]>([]);
-  const [examsMap, setExamsMap] = useState<Record<string, ExamData>>({});
-  const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
+  const [stats, setStats({ totalExams: 0, totalUsers: 0, submissionsToday: 0 });
+  const [chartData, setChartData(any[]>([]);
+  const [pieChartData, setPieChartData(any[]>([]);
+  const [examsMap, setExamsMap(Record<string, ExamData>>({});
+  const [submissionToDelete, setSubmissionToDelete<Submission | null>(null);
 
 
   useEffect(() => {
@@ -377,50 +383,88 @@ export default function AdminDashboardPage() {
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2"><Upload className="h-5 w-5" /> Create New Exam</CardTitle>
-              <CardDescription>Upload an Excel file and configure the question sets.</CardDescription>
+              <CardTitle className="font-headline flex items-center gap-2">Create New Content</CardTitle>
+              <CardDescription>Create a Multiple Choice Exam or a Coding Challenge.</CardDescription>
             </CardHeader>
             <CardContent>
-              <form ref={formRef} onSubmit={handleCreateExam} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Exam Title</Label>
-                  <Input id="title" name="title" required placeholder="e.g., Mid-term Examination" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" name="description" placeholder="A short description of the exam." />
-                </div>
-                 <div className="grid grid-cols-2 gap-4">
+            <Tabs defaultValue="mcq" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="mcq"><Upload className="mr-2 h-4 w-4"/> Multiple Choice</TabsTrigger>
+                    <TabsTrigger value="coding"><Code className="mr-2 h-4 w-4"/> Coding Problem</TabsTrigger>
+                </TabsList>
+                <TabsContent value="mcq"  className="pt-4">
+                  <form ref={formRef} onSubmit={handleCreateExam} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="duration">Duration (minutes)</Label>
-                      <Input id="duration" name="duration" type="number" required placeholder="e.g., 60" />
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="passPercentage">Pass Percentage (%)</Label>
-                        <Input id="passPercentage" name="passPercentage" type="number" required placeholder="e.g., 50" min="0" max="100" />
-                    </div>
-                 </div>
-                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="numSets">Number of Sets</Label>
-                      <Input id="numSets" name="numSets" type="number" required placeholder="e.g., 5" />
+                      <Label htmlFor="title">Exam Title</Label>
+                      <Input id="title" name="title" required placeholder="e.g., Mid-term Examination" />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="questionsPerSet">Questions Per Set</Label>
-                        <Input id="questionsPerSet" name="questionsPerSet" type="number" required placeholder="e.g., 20" />
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea id="description" name="description" placeholder="A short description of the exam." />
                     </div>
-                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="questions-file">Questions File (.xlsx)</Label>
-                  <Input id="questions-file" name="questions-file" type="file" required accept=".xlsx" />
-                   <p className="text-xs text-muted-foreground">
-                    Excel columns: Question, Option A, Option B, Option C, Option D, Correct Answer
-                  </p>
-                </div>
-                <Button type="submit" disabled={isCreatingExam}>
-                  {isCreatingExam ? 'Creating Exam...' : 'Create Exam'}
-                </Button>
-              </form>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="duration">Duration (minutes)</Label>
+                          <Input id="duration" name="duration" type="number" required placeholder="e.g., 60" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="passPercentage">Pass Percentage (%)</Label>
+                            <Input id="passPercentage" name="passPercentage" type="number" required placeholder="e.g., 50" min="0" max="100" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="numSets">Number of Sets</Label>
+                          <Input id="numSets" name="numSets" type="number" required placeholder="e.g., 5" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="questionsPerSet">Questions Per Set</Label>
+                            <Input id="questionsPerSet" name="questionsPerSet" type="number" required placeholder="e.g., 20" />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="questions-file">Questions File (.xlsx)</Label>
+                      <Input id="questions-file" name="questions-file" type="file" required accept=".xlsx" />
+                      <p className="text-xs text-muted-foreground">
+                        Excel columns: Question, Option A, Option B, Option C, Option D, Correct Answer
+                      </p>
+                    </div>
+                    <Button type="submit" disabled={isCreatingExam}>
+                      {isCreatingExam ? 'Creating Exam...' : 'Create Exam'}
+                    </Button>
+                  </form>
+                </TabsContent>
+                 <TabsContent value="coding" className="pt-4">
+                   <form className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="coding-title">Problem Title</Label>
+                            <Input id="coding-title" name="coding-title" placeholder="e.g., Two Sum" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="problem-statement">Problem Statement</Label>
+                            <Textarea id="problem-statement" name="problem-statement" placeholder="Describe the coding challenge..." rows={6} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Test Cases</Label>
+                            <div className="border rounded-lg p-4 space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Input placeholder="Input" />
+                                    <Input placeholder="Expected Output" />
+                                </div>
+                                 <div className="grid grid-cols-2 gap-2">
+                                    <Input placeholder="Input" />
+                                    <Input placeholder="Expected Output" />
+                                </div>
+                                <Button type="button" variant="outline" size="sm">Add Test Case</Button>
+                            </div>
+                             <p className="text-xs text-muted-foreground">
+                                Provide inputs and their expected outputs.
+                            </p>
+                        </div>
+                        <Button type="submit" disabled>Create Coding Problem</Button>
+                    </form>
+                </TabsContent>
+            </Tabs>
             </CardContent>
           </Card>
            <Card className="shadow-sm">
