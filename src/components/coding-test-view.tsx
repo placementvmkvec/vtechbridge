@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { CodingProblem } from '@/app/coding/[id]/page';
+import type { CodingProblem, TestCase } from '@/app/coding/[id]/page';
 import AceEditor from 'react-ace';
 import 'ace-builds/src-noconflict/mode-javascript';
 import 'ace-builds/src-noconflict/mode-python';
@@ -22,10 +22,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle, Loader2, Play, Shield, Unlock, XCircle } from 'lucide-react';
+import { Loader2, Play, Shield, Unlock, CheckCircle, XCircle } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useTheme } from 'next-themes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 type Props = {
   problem: CodingProblem;
@@ -79,18 +81,18 @@ export function CodingTestView({ problem }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [runCompleted, setRunCompleted] = useState(false);
 
-  const [testResults, setTestResults] = useState<EvaluationResult[]>([]);
+  const [evaluationResults, setEvaluationResults] = useState<EvaluationResult[]>([]);
   const [totalScore, setTotalScore] = useState<number | null>(null);
   
   const editorTheme = theme === 'dark' ? 'monokai' : 'github';
   const languageMode = languageModeMap[problem.language] || 'javascript';
   
-  const executeCode = async (testCases: {input: string, output: string}[], isPublic: boolean): Promise<EvaluationResult[]> => {
+  const executeCode = async (testCases: TestCase[], isPublicSet: boolean): Promise<EvaluationResult[]> => {
     const languageVersion = languageVersionMap[problem.language];
     if (!languageVersion) {
         return testCases.map((tc, index) => ({
              testCaseIndex: index,
-             isPublic,
+             isPublic: isPublicSet,
              passed: false,
              output: `Language ${problem.language} is not supported.`,
              expected: tc.output,
@@ -98,13 +100,8 @@ export function CodingTestView({ problem }: Props) {
              input: tc.input,
         }));
     }
-
-    const allTestCases = [
-        ...problem.publicTestCases.map(tc => ({...tc, isPublic: true})),
-        ...problem.privateTestCases.map(tc => ({...tc, isPublic: false}))
-    ];
-
-    const promises = allTestCases.map((tc, index) => fetch('https://emkc.org/api/v2/piston/execute', {
+    
+    const promises = testCases.map((tc, index) => fetch('https://emkc.org/api/v2/piston/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -118,7 +115,7 @@ export function CodingTestView({ problem }: Props) {
         const error = data.run?.stderr;
         return {
             testCaseIndex: index,
-            isPublic: tc.isPublic,
+            isPublic: isPublicSet,
             passed: !error && output === tc.output,
             output: output,
             expected: tc.output,
@@ -128,7 +125,7 @@ export function CodingTestView({ problem }: Props) {
     }).catch(err => {
          return {
             testCaseIndex: index,
-            isPublic: tc.isPublic,
+            isPublic: isPublicSet,
             passed: false,
             output: `API Error: ${err.message}`,
             expected: tc.output,
@@ -143,12 +140,46 @@ export function CodingTestView({ problem }: Props) {
   const handleRunCode = async () => {
       setIsRunning(true);
       setRunCompleted(false);
-      setTestResults([]);
+      setEvaluationResults([]);
       setTotalScore(null);
-
-      const results = await executeCode(problem.publicTestCases, true);
       
-      setTestResults(results);
+      const allTestCases = [
+        ...problem.publicTestCases.map(tc => ({...tc, isPublic: true})),
+        ...problem.privateTestCases.map(tc => ({...tc, isPublic: false})),
+      ];
+
+      const promises = allTestCases.map(tc => fetch('https://emkc.org/api/v2/piston/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              language: problem.language,
+              version: languageVersionMap[problem.language],
+              files: [{ content: code }],
+              stdin: tc.input,
+          }),
+      }).then(res => res.json()).then(data => {
+          const output = data.run?.stdout?.trim() || data.run?.stderr || 'No output';
+          const error = data.run?.stderr;
+          return {
+              ...tc, // includes input, output (expected), isPublic
+              passed: !error && output === tc.output,
+              actualOutput: output,
+              error: error,
+          };
+      }));
+
+      const results = await Promise.all(promises);
+      const formattedResults = results.map((result, index) => ({
+          testCaseIndex: index,
+          isPublic: result.isPublic,
+          passed: result.passed,
+          output: result.actualOutput,
+          expected: result.output,
+          error: result.error,
+          input: result.input,
+      }))
+      
+      setEvaluationResults(formattedResults);
       setIsRunning(false);
       setRunCompleted(true);
   }
@@ -159,8 +190,8 @@ export function CodingTestView({ problem }: Props) {
         return;
     }
     setIsSubmitting(true);
-    // Here you would typically save the results to a database
-    const passedPrivateCount = testResults.filter((r) => !r.isPublic && r.passed).length;
+
+    const passedPrivateCount = evaluationResults.filter((r) => !r.isPublic && r.passed).length;
     const finalScore = passedPrivateCount * problem.pointsPerCase;
     setTotalScore(finalScore);
 
@@ -168,40 +199,41 @@ export function CodingTestView({ problem }: Props) {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // You would likely redirect to a results page here
-    // For now, we just show an alert
+    // For now, we just show an alert and lock the submit button
     alert(`Final score of ${finalScore} submitted!`);
-    setIsSubmitting(false);
+    // isSubmitting will remain true to prevent resubmission
   };
 
-  const isLoading = isRunning || isSubmitting;
+  const isLoading = isRunning; // only consider running state for loading, not submitting
 
   return (
     <div className="flex flex-col h-screen p-4 gap-4 bg-secondary">
         <header className="flex justify-between items-center bg-background p-4 rounded-lg shadow-sm">
             <h1 className="text-xl font-bold font-headline">{problem.title}</h1>
             <div className="flex items-center gap-2">
-                 <Button onClick={handleRunCode} disabled={isLoading} variant="secondary">
+                 <Button onClick={handleRunCode} disabled={isLoading || isSubmitting} variant="secondary">
                     {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
                     {isRunning ? 'Running...' : 'Run Code'}
                 </Button>
-                <Button onClick={handleSubmit} disabled={isLoading || !runCompleted}>
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                    {isSubmitting ? 'Submitting...' : 'Submit Final Code'}
+                <Button onClick={handleSubmit} disabled={isLoading || !runCompleted || isSubmitting}>
+                    {isSubmitting ? 'Submitted' : <Shield className="mr-2 h-4 w-4" />}
+                    {isSubmitting ? `Score: ${totalScore}` : 'Submit Final Code'}
                 </Button>
             </div>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
-            <ScrollArea className="h-full">
             <div className="flex flex-col gap-4">
-                <Card className="flex flex-col">
+                <Card className="flex-1 flex flex-col">
                     <CardHeader>
                         <CardTitle>Problem Statement</CardTitle>
                     </CardHeader>
-                    <CardContent className="flex-1 overflow-hidden">
-                        <div className="prose dark:prose-invert max-w-full p-2">
-                           <Markdown>{problem.problemStatement}</Markdown>
-                        </div>
+                    <CardContent className="flex-1 overflow-auto">
+                        <ScrollArea className="h-full pr-4">
+                           <div className="prose dark:prose-invert max-w-full p-2">
+                               <Markdown>{problem.problemStatement}</Markdown>
+                           </div>
+                        </ScrollArea>
                     </CardContent>
                 </Card>
                  <Card>
@@ -224,9 +256,7 @@ export function CodingTestView({ problem }: Props) {
                     </CardContent>
                 </Card>
             </div>
-            </ScrollArea>
             
-
             <div className="flex flex-col gap-4 min-h-0">
                 <Card className="flex-1 flex flex-col">
                     <CardHeader>
@@ -257,44 +287,50 @@ export function CodingTestView({ problem }: Props) {
                     </CardContent>
                 </Card>
                 
-                 <Card className="max-h-[350px] overflow-y-auto">
+                 <Card className="max-h-[350px] flex flex-col">
                     <CardHeader>
                         <CardTitle>Results</CardTitle>
                         <CardDescription>Results from your latest run will appear here.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-2">
+                    <CardContent className="space-y-2 overflow-y-auto flex-1">
                         {isRunning && (
                             <div className="flex items-center justify-center p-8 gap-2 text-muted-foreground">
                                 <Loader2 className="h-5 w-5 animate-spin" />
                                 <span>Evaluating your code...</span>
                             </div>
                         )}
-                        {!isRunning && testResults.length === 0 && (
+                        {!isRunning && evaluationResults.length === 0 && (
                             <div className="text-center text-sm text-muted-foreground p-4">
                                 Click "Run Code" to test your solution.
                             </div>
                         )}
-                        {!isRunning && testResults.length > 0 && testResults.map((result) => (
-                            <Alert key={`${result.isPublic}-${result.testCaseIndex}`} variant={result.passed ? 'default' : 'destructive'}>
-                                <AlertTitle className="flex items-center gap-2">
-                                    {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                                    <span>
-                                        {result.isPublic ? `Public Test Case #${result.testCaseIndex + 1}` : `Private Test Case #${result.testCaseIndex - problem.publicTestCases.length + 1}`} - 
-                                        <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
-                                    </span>
-                                </AlertTitle>
-                                {!result.passed && result.isPublic && (
-                                    <AlertDescription asChild>
-                                        <div className="mt-2 font-mono text-xs space-y-1">
-                                            <p><b>Input:</b> {result.input}</p>
-                                            <p><b>Expected:</b> {result.expected}</p>
-                                            <p><b>Your Output:</b> {result.output}</p>
-                                            {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
-                                        </div>
-                                    </AlertDescription>
-                                )}
-                            </Alert>
-                        ))}
+                        {!isRunning && evaluationResults.length > 0 && (
+                            <ScrollArea className="h-full pr-4">
+                                <div className="space-y-2">
+                                {evaluationResults.map((result) => (
+                                    <Alert key={`${result.isPublic}-${result.testCaseIndex}`} variant={result.passed ? 'default' : 'destructive'}>
+                                        <AlertTitle className="flex items-center gap-2">
+                                            {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                                            <span>
+                                                {result.isPublic ? `Public Test Case #${result.testCaseIndex + 1}` : `Private Test Case #${result.testCaseIndex - problem.publicTestCases.length + 1}`} - 
+                                                <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
+                                            </span>
+                                        </AlertTitle>
+                                        {!result.passed && result.isPublic && (
+                                            <AlertDescription asChild>
+                                                <div className="mt-2 font-mono text-xs space-y-1">
+                                                    <p><b>Input:</b> {result.input}</p>
+                                                    <p><b>Expected:</b> {result.expected}</p>
+                                                    <p><b>Your Output:</b> {result.output}</p>
+                                                    {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
+                                                </div>
+                                            </AlertDescription>
+                                        )}
+                                    </Alert>
+                                ))}
+                                </div>
+                            </ScrollArea>
+                        )}
                          {!isRunning && totalScore !== null && (
                             <Alert variant="default" className="mt-4 bg-primary/10">
                                 <AlertTitle className="flex items-center gap-2">
@@ -312,6 +348,3 @@ export function CodingTestView({ problem }: Props) {
     </div>
   );
 }
-
-
-    
