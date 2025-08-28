@@ -26,8 +26,6 @@ import { Loader2, Play, Shield, Unlock, CheckCircle, XCircle } from 'lucide-reac
 import Markdown from 'react-markdown';
 import { useTheme } from 'next-themes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 
 type Props = {
   problem: CodingProblem;
@@ -87,12 +85,12 @@ export function CodingTestView({ problem }: Props) {
   const editorTheme = theme === 'dark' ? 'monokai' : 'github';
   const languageMode = languageModeMap[problem.language] || 'javascript';
   
-  const executeCode = async (testCases: TestCase[], isPublicSet: boolean): Promise<EvaluationResult[]> => {
+  const executeCode = async (testCases: (TestCase & { isPublic: boolean })[]): Promise<EvaluationResult[]> => {
     const languageVersion = languageVersionMap[problem.language];
     if (!languageVersion) {
         return testCases.map((tc, index) => ({
              testCaseIndex: index,
-             isPublic: isPublicSet,
+             isPublic: tc.isPublic,
              passed: false,
              output: `Language ${problem.language} is not supported.`,
              expected: tc.output,
@@ -115,7 +113,7 @@ export function CodingTestView({ problem }: Props) {
         const error = data.run?.stderr;
         return {
             testCaseIndex: index,
-            isPublic: isPublicSet,
+            isPublic: tc.isPublic,
             passed: !error && output === tc.output,
             output: output,
             expected: tc.output,
@@ -125,7 +123,7 @@ export function CodingTestView({ problem }: Props) {
     }).catch(err => {
          return {
             testCaseIndex: index,
-            isPublic: isPublicSet,
+            isPublic: tc.isPublic,
             passed: false,
             output: `API Error: ${err.message}`,
             expected: tc.output,
@@ -147,39 +145,10 @@ export function CodingTestView({ problem }: Props) {
         ...problem.publicTestCases.map(tc => ({...tc, isPublic: true})),
         ...problem.privateTestCases.map(tc => ({...tc, isPublic: false})),
       ];
-
-      const promises = allTestCases.map(tc => fetch('https://emkc.org/api/v2/piston/execute', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-              language: problem.language,
-              version: languageVersionMap[problem.language],
-              files: [{ content: code }],
-              stdin: tc.input,
-          }),
-      }).then(res => res.json()).then(data => {
-          const output = data.run?.stdout?.trim() || data.run?.stderr || 'No output';
-          const error = data.run?.stderr;
-          return {
-              ...tc, // includes input, output (expected), isPublic
-              passed: !error && output === tc.output,
-              actualOutput: output,
-              error: error,
-          };
-      }));
-
-      const results = await Promise.all(promises);
-      const formattedResults = results.map((result, index) => ({
-          testCaseIndex: index,
-          isPublic: result.isPublic,
-          passed: result.passed,
-          output: result.actualOutput,
-          expected: result.output,
-          error: result.error,
-          input: result.input,
-      }))
       
-      setEvaluationResults(formattedResults);
+      const results = await executeCode(allTestCases);
+      
+      setEvaluationResults(results);
       setIsRunning(false);
       setRunCompleted(true);
   }
@@ -307,27 +276,33 @@ export function CodingTestView({ problem }: Props) {
                         {!isRunning && evaluationResults.length > 0 && (
                             <ScrollArea className="h-full pr-4">
                                 <div className="space-y-2">
-                                {evaluationResults.map((result) => (
-                                    <Alert key={`${result.isPublic}-${result.testCaseIndex}`} variant={result.passed ? 'default' : 'destructive'}>
-                                        <AlertTitle className="flex items-center gap-2">
-                                            {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                                            <span>
-                                                {result.isPublic ? `Public Test Case #${result.testCaseIndex + 1}` : `Private Test Case #${result.testCaseIndex - problem.publicTestCases.length + 1}`} - 
-                                                <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
-                                            </span>
-                                        </AlertTitle>
-                                        {!result.passed && result.isPublic && (
-                                            <AlertDescription asChild>
-                                                <div className="mt-2 font-mono text-xs space-y-1">
-                                                    <p><b>Input:</b> {result.input}</p>
-                                                    <p><b>Expected:</b> {result.expected}</p>
-                                                    <p><b>Your Output:</b> {result.output}</p>
-                                                    {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
-                                                </div>
-                                            </AlertDescription>
-                                        )}
-                                    </Alert>
-                                ))}
+                                {evaluationResults.map((result) => {
+                                    const testCaseNumber = result.isPublic 
+                                        ? result.testCaseIndex + 1 
+                                        : result.testCaseIndex - problem.publicTestCases.length + 1;
+                                    
+                                    return (
+                                        <Alert key={`${result.isPublic}-${result.testCaseIndex}`} variant={result.passed ? 'default' : 'destructive'}>
+                                            <AlertTitle className="flex items-center gap-2">
+                                                {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                                                <span>
+                                                    {result.isPublic ? `Public Test Case #${testCaseNumber}` : `Private Test Case #${testCaseNumber}`} - 
+                                                    <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
+                                                </span>
+                                            </AlertTitle>
+                                            {result.isPublic && !result.passed && (
+                                                <AlertDescription asChild>
+                                                    <div className="mt-2 font-mono text-xs space-y-1">
+                                                        <p><b>Input:</b> {result.input}</p>
+                                                        <p><b>Expected:</b> {result.expected}</p>
+                                                        <p><b>Your Output:</b> {result.output}</p>
+                                                        {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
+                                                    </div>
+                                                </AlertDescription>
+                                            )}
+                                        </Alert>
+                                    )
+                                })}
                                 </div>
                             </ScrollArea>
                         )}
@@ -348,3 +323,4 @@ export function CodingTestView({ problem }: Props) {
     </div>
   );
 }
+
