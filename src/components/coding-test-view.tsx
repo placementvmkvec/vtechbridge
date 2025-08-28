@@ -22,12 +22,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle, Loader2, Play, Shield, Unlock } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, Play, Shield, Unlock, XCircle } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useTheme } from 'next-themes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from './ui/textarea';
-import { Label } from './ui/label';
 
 type Props = {
   problem: CodingProblem;
@@ -101,7 +99,12 @@ export function CodingTestView({ problem }: Props) {
         }));
     }
 
-    const promises = testCases.map((tc, index) => fetch('https://emkc.org/api/v2/piston/execute', {
+    const allTestCases = [
+        ...problem.publicTestCases.map(tc => ({...tc, isPublic: true})),
+        ...problem.privateTestCases.map(tc => ({...tc, isPublic: false}))
+    ];
+
+    const promises = allTestCases.map((tc, index) => fetch('https://emkc.org/api/v2/piston/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -115,7 +118,7 @@ export function CodingTestView({ problem }: Props) {
         const error = data.run?.stderr;
         return {
             testCaseIndex: index,
-            isPublic,
+            isPublic: tc.isPublic,
             passed: !error && output === tc.output,
             output: output,
             expected: tc.output,
@@ -125,7 +128,7 @@ export function CodingTestView({ problem }: Props) {
     }).catch(err => {
          return {
             testCaseIndex: index,
-            isPublic,
+            isPublic: tc.isPublic,
             passed: false,
             output: `API Error: ${err.message}`,
             expected: tc.output,
@@ -141,17 +144,20 @@ export function CodingTestView({ problem }: Props) {
       setIsRunning(true);
       setRunCompleted(false);
       setTestResults([]);
+      setTotalScore(null);
 
-      const publicResults = await executeCode(problem.publicTestCases, true);
-      const privateResults = await executeCode(problem.privateTestCases, false);
-      const allResults = [...publicResults, ...privateResults];
+      const results = await executeCode(problem.publicTestCases, true);
       
-      setTestResults(allResults);
+      setTestResults(results);
       setIsRunning(false);
       setRunCompleted(true);
   }
 
   const handleSubmit = async () => {
+    if (!runCompleted) {
+        alert("Please run your code at least once before submitting.");
+        return;
+    }
     setIsSubmitting(true);
     // Here you would typically save the results to a database
     const passedPrivateCount = testResults.filter((r) => !r.isPublic && r.passed).length;
@@ -204,13 +210,13 @@ export function CodingTestView({ problem }: Props) {
                             <Unlock className="h-5 w-5" /> Public Test Cases
                         </CardTitle>
                         <CardDescription>
-                            These are the examples your code will be tested against.
+                            These are the examples your code will be tested against before final submission.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {problem.publicTestCases.map((tc, index) => (
                             <div key={index} className="p-4 bg-secondary rounded-lg font-mono text-sm">
-                                <p className="font-semibold">Test Case #{index + 1}</p>
+                                <p className="font-semibold">Example #{index + 1}</p>
                                 <p><span className="text-muted-foreground">Input:</span> {tc.input}</p>
                                 <p><span className="text-muted-foreground">Expected Output:</span> {tc.output}</p>
                             </div>
@@ -253,7 +259,7 @@ export function CodingTestView({ problem }: Props) {
                 
                  <Card className="max-h-[350px] overflow-y-auto">
                     <CardHeader>
-                        <CardTitle>Test Results</CardTitle>
+                        <CardTitle>Results</CardTitle>
                         <CardDescription>Results from your latest run will appear here.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2">
@@ -265,7 +271,7 @@ export function CodingTestView({ problem }: Props) {
                         )}
                         {!isRunning && testResults.length === 0 && (
                             <div className="text-center text-sm text-muted-foreground p-4">
-                                Click "Run Code" to test your solution against public and private test cases.
+                                Click "Run Code" to test your solution.
                             </div>
                         )}
                         {!isRunning && testResults.length > 0 && testResults.map((result) => (
@@ -273,7 +279,7 @@ export function CodingTestView({ problem }: Props) {
                                 <AlertTitle className="flex items-center gap-2">
                                     {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                                     <span>
-                                        {result.isPublic ? `Public Test Case #${result.testCaseIndex + 1}` : `Private Test Case #${result.testCaseIndex + 1}`} - 
+                                        {result.isPublic ? `Public Test Case #${result.testCaseIndex + 1}` : `Private Test Case #${result.testCaseIndex - problem.publicTestCases.length + 1}`} - 
                                         <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
                                     </span>
                                 </AlertTitle>
@@ -292,10 +298,10 @@ export function CodingTestView({ problem }: Props) {
                          {!isRunning && totalScore !== null && (
                             <Alert variant="default" className="mt-4 bg-primary/10">
                                 <AlertTitle className="flex items-center gap-2">
-                                    <Shield className="h-4 w-4 text-primary"/> Final Score Submitted
+                                    <Shield className="h-4 w-4 text-primary"/> Final Submission Results
                                 </AlertTitle>
                                 <AlertDescription>
-                                    Your final score is <span className="font-bold">{totalScore}</span>.
+                                    Your final score is <span className="font-bold">{totalScore}</span>. You can now safely leave this page.
                                 </AlertDescription>
                             </Alert>
                          )}
@@ -306,3 +312,6 @@ export function CodingTestView({ problem }: Props) {
     </div>
   );
 }
+
+
+    
