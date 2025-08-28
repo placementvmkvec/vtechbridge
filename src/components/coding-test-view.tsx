@@ -143,13 +143,16 @@ export function CodingTestView({ problem }: Props) {
     const allTestCases = [...publicCases, ...privateCases];
     
     const results: EvaluationResult[] = [];
+    
     for (let i = 0; i < allTestCases.length; i++) {
         const tc = allTestCases[i];
         const executionResult = await executeCode(code, tc.input);
+        const privateCaseIndex = allTestCases.filter(c => !c.isPublic).findIndex(c => c.input === tc.input);
+
         results.push({
             ...executionResult,
             passed: !executionResult.error && executionResult.output === tc.output,
-            testCaseIndex: tc.isPublic ? i : i - publicCases.length,
+            testCaseIndex: tc.isPublic ? i : privateCaseIndex,
             isPublic: tc.isPublic,
             expected: tc.output,
             input: tc.input
@@ -191,7 +194,7 @@ export function CodingTestView({ problem }: Props) {
   const isLoading = isRunning || isCustomRunning;
 
   return (
-    <div className="flex flex-col h-screen p-4 gap-4 bg-secondary">
+    <div className="flex flex-col p-4 gap-4 bg-secondary">
         <header className="flex justify-between items-center bg-background p-4 rounded-lg shadow-sm">
             <h1 className="text-xl font-bold font-headline">{problem.title}</h1>
             <div className="flex items-center gap-2">
@@ -206,77 +209,79 @@ export function CodingTestView({ problem }: Props) {
             </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
-            <div className="flex flex-col gap-4 min-h-0">
-                <Card className="flex-1 flex flex-col">
-                    <CardHeader>
-                        <CardTitle>Problem Statement</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex-1 overflow-auto">
-                        <ScrollArea className="h-full pr-4">
-                           <div className="prose dark:prose-invert max-w-full p-2">
-                               <Markdown>{problem.problemStatement}</Markdown>
-                           </div>
-                        </ScrollArea>
-                    </CardContent>
-                </Card>
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Unlock className="h-5 w-5" /> Public Test Cases
-                        </CardTitle>
-                        <CardDescription>
-                            These are the examples your code will be tested against.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {problem.publicTestCases.map((tc, index) => (
-                            <div key={index} className="p-4 bg-secondary rounded-lg font-mono text-sm">
-                                <p className="font-semibold">Example #{index + 1}</p>
-                                <p><span className="text-muted-foreground">Input:</span> {tc.input}</p>
-                                <p><span className="text-muted-foreground">Expected Output:</span> {tc.output}</p>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-            </div>
+        <div className="flex flex-col gap-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Problem Statement</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ScrollArea className="h-full pr-4">
+                       <div className="prose dark:prose-invert max-w-full p-2">
+                           <Markdown>{problem.problemStatement}</Markdown>
+                       </div>
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Unlock className="h-5 w-5" /> Public Test Cases
+                    </CardTitle>
+                    <CardDescription>
+                        These are the examples your code will be tested against.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {problem.publicTestCases.map((tc, index) => (
+                        <div key={index} className="p-4 bg-secondary rounded-lg font-mono text-sm">
+                            <p className="font-semibold">Example #{index + 1}</p>
+                            <p><span className="text-muted-foreground">Input:</span> {tc.input}</p>
+                            <p><span className="text-muted-foreground">Expected Output:</span> {tc.output}</p>
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
             
-             <div className="flex flex-col gap-4 min-h-0">
-                <Card className="flex-grow flex flex-col">
-                    <CardHeader>
-                        <CardTitle>Code Editor</CardTitle>
-                        <CardDescription>Language: {problem.language}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 relative">
-                        <AceEditor
-                            mode={languageMode}
-                            theme={editorTheme}
-                            onChange={setCode}
-                            name="code-editor"
-                            editorProps={{ $blockScrolling: true }}
-                            value={code}
-                            fontSize={16}
-                            width="100%"
-                            height="100%"
-                            className="absolute top-0 left-0"
-                            setOptions={{
-                                useWorker: false,
-                                enableBasicAutocompletion: true,
-                                enableLiveAutocompletion: true,
-                                enableSnippets: true,
-                                showLineNumbers: true,
-                                tabSize: 2,
-                            }}
-                        />
-                    </CardContent>
-                </Card>
-                <Card className="h-1/3 flex flex-col">
-                    <Tabs defaultValue="results" className="h-full flex flex-col">
-                            <TabsList className="mx-4 mt-4 grid w-auto grid-cols-2 self-start">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Code Editor</CardTitle>
+                    <CardDescription>Language: {problem.language}</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[50vh] relative">
+                    <AceEditor
+                        mode={languageMode}
+                        theme={editorTheme}
+                        onChange={setCode}
+                        name="code-editor"
+                        editorProps={{ $blockScrolling: true }}
+                        value={code}
+                        fontSize={16}
+                        width="100%"
+                        height="100%"
+                        className="absolute top-0 left-0"
+                        setOptions={{
+                            useWorker: false,
+                            enableBasicAutocompletion: true,
+                            enableLiveAutocompletion: true,
+                            enableSnippets: true,
+                            showLineNumbers: true,
+                            tabSize: 2,
+                        }}
+                    />
+                </CardContent>
+            </Card>
+
+            <Card>
+                <Tabs defaultValue="results" className="w-full">
+                        <CardHeader>
+                          <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="results">Test Results</TabsTrigger>
                             <TabsTrigger value="custom">Custom Input</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="results" className="flex-1 overflow-hidden p-4">
+                          </TabsList>
+                        </CardHeader>
+                    <CardContent className="h-[40vh]">
+                        <TabsContent value="results" className="h-full">
                                 <ScrollArea className="h-full">
                                 {isRunning && (
                                     <div className="flex items-center justify-center h-full gap-2 text-muted-foreground">
@@ -292,9 +297,8 @@ export function CodingTestView({ problem }: Props) {
                                 {!isRunning && evaluationResults.length > 0 && (
                                     <div className="space-y-2">
                                         {evaluationResults.map((result) => {
-                                            const privateTestCaseNumber = evaluationResults.filter(r => !r.isPublic).findIndex(r => r.testCaseIndex === result.testCaseIndex);
-                                            const testCaseNumber = result.isPublic ? result.testCaseIndex + 1 : privateTestCaseNumber + 1;
-
+                                            const testCaseNumber = result.isPublic ? problem.publicTestCases.findIndex(tc => tc.input === result.input) + 1 : result.testCaseIndex + 1;
+                                            
                                             return (
                                                 <Alert key={`${result.isPublic}-${result.testCaseIndex}`} variant={result.passed ? 'default' : 'destructive'}>
                                                     <AlertTitle className="flex items-center gap-2">
@@ -321,41 +325,39 @@ export function CodingTestView({ problem }: Props) {
                                 )}
                             </ScrollArea>
                         </TabsContent>
-                        <TabsContent value="custom" className="flex-1 flex flex-col p-4 space-y-4 overflow-hidden">
-                            <div className="flex-1 flex flex-col space-y-2">
-                                <div className="grid grid-cols-2 gap-4 flex-1">
-                                    <div className="flex flex-col space-y-2">
-                                        <Label htmlFor="custom-input" className="mb-1">Custom Input (stdin)</Label>
-                                        <Textarea id="custom-input" value={customInput} onChange={(e) => setCustomInput(e.target.value)} placeholder="Enter your test input here..." className="flex-1 font-mono text-sm" />
-                                    </div>
-                                    <div className="flex flex-col space-y-2">
-                                        <Label className="mb-1">Your Output</Label>
-                                        <ScrollArea className="border rounded-md bg-secondary h-full">
-                                            {isCustomRunning && (
-                                                <div className="flex items-center justify-center h-full gap-2 text-muted-foreground">
-                                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                                </div>
-                                            )}
-                                            {customRunResult && !isCustomRunning && (
-                                                <div className="p-4 space-y-2 font-mono text-sm">
-                                                    <pre><code>{customRunResult.output}</code></pre>
-                                                        {customRunResult.error && (
-                                                            <pre className="text-destructive"><code>{customRunResult.error}</code></pre>
-                                                        )}
-                                                </div>
-                                            )}
-                                        </ScrollArea>
-                                    </div>
+                        <TabsContent value="custom" className="flex flex-col h-full space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+                                <div className="flex flex-col space-y-2">
+                                    <Label htmlFor="custom-input" className="mb-1">Custom Input (stdin)</Label>
+                                    <Textarea id="custom-input" value={customInput} onChange={(e) => setCustomInput(e.target.value)} placeholder="Enter your test input here..." className="flex-1 font-mono text-sm" />
                                 </div>
-                                <Button onClick={handleCustomRun} disabled={isLoading || isSubmitting} className="self-start">
-                                    {isCustomRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Play className="mr-2 h-4 w-4"/>}
-                                    {isCustomRunning ? 'Running...' : 'Run Custom Input'}
-                                </Button>
+                                <div className="flex flex-col space-y-2">
+                                    <Label className="mb-1">Your Output</Label>
+                                    <ScrollArea className="border rounded-md bg-secondary h-full">
+                                        {isCustomRunning && (
+                                            <div className="flex items-center justify-center h-full gap-2 text-muted-foreground">
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                            </div>
+                                        )}
+                                        {customRunResult && !isCustomRunning && (
+                                            <div className="p-4 space-y-2 font-mono text-sm">
+                                                <pre><code>{customRunResult.output}</code></pre>
+                                                    {customRunResult.error && (
+                                                        <pre className="text-destructive"><code>{customRunResult.error}</code></pre>
+                                                    )}
+                                            </div>
+                                        )}
+                                    </ScrollArea>
+                                </div>
                             </div>
+                            <Button onClick={handleCustomRun} disabled={isLoading || isSubmitting} className="self-start">
+                                {isCustomRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Play className="mr-2 h-4 w-4"/>}
+                                {isCustomRunning ? 'Running...' : 'Run Custom Input'}
+                            </Button>
                         </TabsContent>
-                    </Tabs>
-                </Card>
-            </div>
+                    </CardContent>
+                </Tabs>
+            </Card>
         </div>
     </div>
   );
