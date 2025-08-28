@@ -66,7 +66,7 @@ export function CodingTestView({ problem }: Props) {
         problemStatement: problem.problemStatement,
         userCode: code,
         language: problem.language,
-        testCases: problem.testCases,
+        testCases: problem.testCases.map((tc, index) => ({...tc, id: index + 1})),
       });
       setEvaluationResult(result);
       toast({
