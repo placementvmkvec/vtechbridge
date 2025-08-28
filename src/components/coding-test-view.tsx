@@ -26,6 +26,8 @@ import { Loader2, Play, Shield, Unlock, CheckCircle, XCircle } from 'lucide-reac
 import Markdown from 'react-markdown';
 import { useTheme } from 'next-themes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from './ui/textarea';
+import { Label } from './ui/label';
 
 type Props = {
   problem: CodingProblem;
@@ -77,62 +79,59 @@ export function CodingTestView({ problem }: Props) {
   const [code, setCode] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [runCompleted, setRunCompleted] = useState(false);
-
   const [evaluationResults, setEvaluationResults] = useState<EvaluationResult[]>([]);
   const [totalScore, setTotalScore] = useState<number | null>(null);
   
   const editorTheme = theme === 'dark' ? 'monokai' : 'github';
   const languageMode = languageModeMap[problem.language] || 'javascript';
   
-  const executeCode = async (testCases: (TestCase & { isPublic: boolean })[]): Promise<EvaluationResult[]> => {
-    const languageVersion = languageVersionMap[problem.language];
-    if (!languageVersion) {
-        return testCases.map((tc, index) => ({
-             testCaseIndex: index,
-             isPublic: tc.isPublic,
-             passed: false,
-             output: `Language ${problem.language} is not supported.`,
-             expected: tc.output,
-             error: `Unsupported Language`,
-             input: tc.input,
-        }));
-    }
-    
-    const promises = testCases.map((tc, index) => fetch('https://emkc.org/api/v2/piston/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            language: problem.language,
-            version: languageVersion,
-            files: [{ content: code }],
-            stdin: tc.input,
-        }),
-    }).then(res => res.json()).then(data => {
-        const output = data.run?.stdout?.trim() || data.run?.stderr || 'No output';
+  const executeCode = async (testCase: TestCase, language: string, version: string, sourceCode: string): Promise<Omit<EvaluationResult, 'testCaseIndex' | 'isPublic'>> => {
+     try {
+         const response = await fetch('https://emkc.org/api/v2/piston/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                language: language,
+                version: version,
+                files: [{ content: sourceCode }],
+                stdin: testCase.input,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorMessage = `API request failed with status ${response.status}.`;
+            if (response.status === 404) errorMessage = "The execution service endpoint was not found (404)."
+            return {
+                passed: false,
+                output: `API Error: ${errorText}`,
+                expected: testCase.output,
+                error: errorMessage,
+                input: testCase.input,
+            };
+        }
+
+        const data = await response.json();
+        const output = data.run?.stdout?.trim() || data.run?.stderr?.trim() || 'No output';
         const error = data.run?.stderr;
         return {
-            testCaseIndex: index,
-            isPublic: tc.isPublic,
-            passed: !error && output === tc.output,
+            passed: !error && output === testCase.output,
             output: output,
-            expected: tc.output,
+            expected: testCase.output,
             error: error,
-            input: tc.input,
+            input: testCase.input,
         };
-    }).catch(err => {
+     } catch (err: any) {
          return {
-            testCaseIndex: index,
-            isPublic: tc.isPublic,
             passed: false,
-            output: `API Error: ${err.message}`,
-            expected: tc.output,
-            error: `API Error`,
-            input: tc.input,
+            output: `Client Error: ${err.message}`,
+            expected: testCase.output,
+            error: `Client-side fetch error`,
+            input: testCase.input,
         };
-    }));
-
-    return Promise.all(promises);
+     }
   }
 
   const handleRunCode = async () => {
@@ -140,17 +139,33 @@ export function CodingTestView({ problem }: Props) {
       setRunCompleted(false);
       setEvaluationResults([]);
       setTotalScore(null);
+
+      const languageVersion = languageVersionMap[problem.language];
+      if (!languageVersion) {
+          alert(`Language ${problem.language} is not supported by the execution engine.`);
+          setIsRunning(false);
+          return;
+      }
       
       const allTestCases = [
         ...problem.publicTestCases.map(tc => ({...tc, isPublic: true})),
         ...problem.privateTestCases.map(tc => ({...tc, isPublic: false})),
       ];
       
-      const results = await executeCode(allTestCases);
+      const results: EvaluationResult[] = [];
+      for (let i = 0; i < allTestCases.length; i++) {
+        const tc = allTestCases[i];
+        const result = await executeCode(tc, problem.language, languageVersion, code);
+        results.push({
+            ...result,
+            testCaseIndex: i,
+            isPublic: tc.isPublic,
+        });
+      }
       
       setEvaluationResults(results);
-      setIsRunning(false);
       setRunCompleted(true);
+      setIsRunning(false);
   }
 
   const handleSubmit = async () => {
@@ -164,16 +179,13 @@ export function CodingTestView({ problem }: Props) {
     const finalScore = passedPrivateCount * problem.pointsPerCase;
     setTotalScore(finalScore);
 
-    // Simulate API call to save score
+    // Simulate API call to save score - in a real app, you would save this to Firestore
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // You would likely redirect to a results page here
-    // For now, we just show an alert and lock the submit button
     alert(`Final score of ${finalScore} submitted!`);
-    // isSubmitting will remain true to prevent resubmission
   };
 
-  const isLoading = isRunning; // only consider running state for loading, not submitting
+  const isLoading = isRunning;
 
   return (
     <div className="flex flex-col h-screen p-4 gap-4 bg-secondary">
@@ -186,7 +198,7 @@ export function CodingTestView({ problem }: Props) {
                 </Button>
                 <Button onClick={handleSubmit} disabled={isLoading || !runCompleted || isSubmitting}>
                     {isSubmitting ? 'Submitted' : <Shield className="mr-2 h-4 w-4" />}
-                    {isSubmitting ? `Score: ${totalScore}` : 'Submit Final Code'}
+                    {isSubmitting && totalScore !== null ? `Score: ${totalScore}` : 'Submit Final Code'}
                 </Button>
             </div>
         </header>
@@ -211,7 +223,7 @@ export function CodingTestView({ problem }: Props) {
                             <Unlock className="h-5 w-5" /> Public Test Cases
                         </CardTitle>
                         <CardDescription>
-                            These are the examples your code will be tested against before final submission.
+                            Your code will be tested against these examples.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -323,4 +335,3 @@ export function CodingTestView({ problem }: Props) {
     </div>
   );
 }
-
