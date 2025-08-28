@@ -16,13 +16,18 @@ export function AdminNav() {
     },
      {
       href: "/admin/exams",
-      label: "Exams",
-      active: pathname.startsWith("/admin/exams"),
+      label: "MCQ Exams",
+      active: pathname.startsWith("/admin/exams") || pathname.startsWith("/admin/analytics"),
     },
     {
       href: "/admin/coding",
       label: "Coding",
       active: pathname.startsWith("/admin/coding"),
+    },
+    {
+        href: "/admin/coding-submissions",
+        label: "Coding Submissions",
+        active: pathname.startsWith("/admin/coding-submissions"),
     },
     {
       href: "/admin/users",
@@ -31,7 +36,7 @@ export function AdminNav() {
     },
     {
       href: "/admin/submissions",
-      label: "Submissions",
+      label: "MCQ Submissions",
       active: pathname.startsWith("/admin/submissions"),
     },
   ];
@@ -55,5 +60,3 @@ export function AdminNav() {
     </nav>
   );
 }
-
-    

@@ -110,7 +110,7 @@ export default function AdminDashboardPage() {
   const [examFormRef, setExamFormRef] = useState<HTMLFormElement | null>(null);
 
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [stats, setStats] = useState({ totalExams: 0, totalUsers: 0, submissionsToday: 0 });
+  const [stats, setStats] = useState({ totalExams: 0, totalUsers: 0, submissionsToday: 0, totalCodingProblems: 0 });
   const [chartData, setChartData] = useState<any[]>([]);
   const [pieChartData, setPieChartData] = useState<any[]>([]);
   const [examsMap, setExamsMap] = useState<Record<string, ExamData>>({});
@@ -147,6 +147,10 @@ export default function AdminDashboardPage() {
         setExamsMap(examsDataMap);
         const totalExams = examsSnapshot.size;
 
+        // Fetch coding problems
+        const codingProblemsSnapshot = await getDocs(collection(db, 'coding_problems'));
+        const totalCodingProblems = codingProblemsSnapshot.size;
+
         // Fetch users
         const usersSnapshot = await getDocs(collection(db, 'users'));
         const totalUsers = usersSnapshot.size;
@@ -161,7 +165,7 @@ export default function AdminDashboardPage() {
         today.setHours(0, 0, 0, 0);
         const submissionsToday = fetchedSubmissions.filter(s => s.submittedAt && s.submittedAt.toDate() >= today).length;
 
-        setStats({ totalExams, totalUsers, submissionsToday });
+        setStats({ totalExams, totalUsers, submissionsToday, totalCodingProblems });
         
         // Process chart data
         processChartData(fetchedSubmissions, examsDataMap);
@@ -347,16 +351,28 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 container mx-auto">
-        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
           <Link href="/admin/exams">
             <Card className="shadow-sm hover:bg-muted/50 transition-colors">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Exams</CardTitle>
+                <CardTitle className="text-sm font-medium">Total MCQ Exams</CardTitle>
                 <ClipboardList className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalExams}</div>
-                <p className="text-xs text-muted-foreground">Active exams available to users</p>
+                <p className="text-xs text-muted-foreground">Active MCQ exams available</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/admin/coding">
+            <Card className="shadow-sm hover:bg-muted/50 transition-colors">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Coding Problems</CardTitle>
+                <Code className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalCodingProblems}</div>
+                <p className="text-xs text-muted-foreground">Available coding challenges</p>
               </CardContent>
             </Card>
           </Link>
@@ -375,7 +391,7 @@ export default function AdminDashboardPage() {
           <Link href="/admin/submissions">
             <Card className="shadow-sm hover:bg-muted/50 transition-colors">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Submissions Today</CardTitle>
+                <CardTitle className="text-sm font-medium">MCQ Submissions Today</CardTitle>
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -437,7 +453,7 @@ export default function AdminDashboardPage() {
           </Card>
            <Card className="shadow-sm">
                  <CardHeader>
-                    <CardTitle className="font-headline">Recent Submissions</CardTitle>
+                    <CardTitle className="font-headline">Recent MCQ Submissions</CardTitle>
                     <CardDescription>The 10 most recent test submissions from users.</CardDescription>
                  </CardHeader>
                  <CardContent>
@@ -510,8 +526,8 @@ export default function AdminDashboardPage() {
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle className="font-headline">Pass/Fail Rate Overview</CardTitle>
-              <CardDescription>A look at pass vs fail rates across all exams.</CardDescription>
+              <CardTitle className="font-headline">MCQ Pass/Fail Rate Overview</CardTitle>
+              <CardDescription>A look at pass vs fail rates across all MCQ exams.</CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[250px] w-full">
@@ -531,8 +547,8 @@ export default function AdminDashboardPage() {
           </Card>
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle className="font-headline">Exam Performance</CardTitle>
-              <CardDescription>Comparison of pass/fail counts for different exams.</CardDescription>
+              <CardTitle className="font-headline">MCQ Exam Performance</CardTitle>
+              <CardDescription>Comparison of pass/fail counts for different MCQ exams.</CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[250px] w-full">

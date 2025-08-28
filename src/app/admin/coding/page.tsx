@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
-import { Code, Trash2, Edit, PlusCircle } from 'lucide-react';
+import { Code, Trash2, Edit, PlusCircle, BarChart2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -241,6 +241,12 @@ export default function AdminCodingProblemsPage() {
                         : 'N/A'}
                     </TableCell>
                     <TableCell className="text-right space-x-2">
+                       <Link href={`/admin/coding/${problem.id}/analytics`}>
+                         <Button variant="outline" size="icon">
+                            <BarChart2 className="h-4 w-4" />
+                            <span className="sr-only">View Analytics</span>
+                         </Button>
+                       </Link>
                        <Link href={`/admin/coding/${problem.id}/edit`}>
                          <Button variant="outline" size="icon">
                             <Edit className="h-4 w-4" />

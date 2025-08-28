@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { CodingProblem, TestCase } from '@/app/coding/[id]/page';
 import AceEditor from 'react-ace';
 import 'ace-builds/src-noconflict/mode-javascript';
@@ -28,6 +28,12 @@ import { useTheme } from 'next-themes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { addDoc, collection } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+
 
 type Props = {
   problem: CodingProblem;
@@ -81,6 +87,9 @@ type CustomRunResult = {
 
 
 export function CodingTestView({ problem }: Props) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [user, setUser] = useState<User | null>(null);
   const { theme } = useTheme();
   const [code, setCode] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -93,6 +102,17 @@ export function CodingTestView({ problem }: Props) {
   const [isCustomRunning, setIsCustomRunning] = useState(false);
   const [customRunResult, setCustomRunResult] = useState<CustomRunResult | null>(null);
   
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+      } else {
+        router.push("/login");
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
+
   const editorTheme = theme === 'dark' ? 'monokai' : 'github';
   const languageMode = languageModeMap[problem.language] || 'javascript';
   
@@ -143,12 +163,10 @@ export function CodingTestView({ problem }: Props) {
     
     const results: EvaluationResult[] = [];
     
-    for (let i = 0; i < allTestCases.length; i++) {
-        const tc = allTestCases[i];
-        // Find the index relative to its type (public/private)
+    for (const [index, tc] of allTestCases.entries()) {
         const typeIndex = tc.isPublic 
-            ? problem.publicTestCases.findIndex(c => c.input === tc.input) 
-            : problem.privateTestCases.findIndex(c => c.input === tc.input);
+            ? problem.publicTestCases.findIndex(c => c.input === tc.input && c.output === tc.output) 
+            : problem.privateTestCases.findIndex(c => c.input === tc.input && c.output === tc.output);
 
         const executionResult = await executeCode(code, tc.input);
 
@@ -164,7 +182,7 @@ export function CodingTestView({ problem }: Props) {
     
     setEvaluationResults(results);
     setIsRunning(false);
-}
+  }
 
 
   const handleCustomRun = async () => {
@@ -176,8 +194,12 @@ export function CodingTestView({ problem }: Props) {
   }
 
  const handleSubmit = async () => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: "You must be logged in to submit."});
+        return;
+    }
     if (evaluationResults.length === 0) {
-        alert("Please run your code against the test cases at least once before submitting.");
+        toast({ variant: 'destructive', title: 'Cannot Submit', description: "Please run your code at least once before submitting."});
         return;
     }
     setIsSubmitting(true);
@@ -186,12 +208,31 @@ export function CodingTestView({ problem }: Props) {
     const finalScore = passedPrivateCount * problem.pointsPerCase;
     setTotalScore(finalScore);
 
-    // Simulate API call to save score - in a real app, you would save this to Firestore
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // In a real app, you would navigate away or show a proper success message.
-    alert(`Final score of ${finalScore} submitted!`);
-    // Example: router.push('/dashboard');
+    try {
+        await addDoc(collection(db, 'coding_submissions'), {
+            userId: user.uid,
+            userName: user.displayName,
+            userEmail: user.email,
+            problemId: problem.id,
+            problemTitle: problem.title,
+            language: problem.language,
+            code,
+            score: finalScore,
+            results: evaluationResults,
+            createdAt: new Date(),
+        });
+
+        toast({ title: 'Success!', description: `Final score of ${finalScore} submitted!` });
+        
+        setTimeout(() => {
+            router.push('/dashboard');
+        }, 2000);
+
+    } catch (error: any) {
+        console.error("Error saving submission:", error);
+        toast({ variant: 'destructive', title: 'Submission Failed', description: error.message });
+        setIsSubmitting(false);
+    }
   };
 
   const isLoading = isRunning || isCustomRunning;
@@ -206,8 +247,8 @@ export function CodingTestView({ problem }: Props) {
                     {isRunning ? 'Running...' : 'Run Code'}
                 </Button>
                 <Button onClick={handleSubmit} disabled={isLoading || evaluationResults.length === 0 || isSubmitting}>
-                    {isSubmitting ? 'Submitted' : <Shield className="mr-2 h-4 w-4" />}
-                    {isSubmitting && totalScore !== null ? `Score: ${totalScore}` : 'Submit Final Code'}
+                    {isSubmitting ? 'Submitting...' : <Shield className="mr-2 h-4 w-4" />}
+                    {isSubmitting ? (totalScore !== null ? `Score: ${totalScore}` : 'Submitting...') : 'Submit Final Code'}
                 </Button>
             </div>
         </header>
@@ -302,16 +343,16 @@ export function CodingTestView({ problem }: Props) {
                                 )}
                                 {!isRunning && evaluationResults.length > 0 && (
                                     <div className="space-y-2">
-                                        {evaluationResults.filter(r => r.isPublic).map((result) => (
-                                            <Alert key={`public-${result.testCaseIndex}`} variant={result.passed ? 'default' : 'destructive'}>
+                                        {evaluationResults.map((result, i) => (
+                                            <Alert key={`${result.isPublic}-${result.testCaseIndex}-${i}`} variant={result.passed ? 'default' : 'destructive'}>
                                                 <AlertTitle className="flex items-center gap-2">
                                                     {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                                                     <span>
-                                                        Public Test Case #{result.testCaseIndex + 1} - 
+                                                        {result.isPublic ? `Public Test Case #${result.testCaseIndex + 1}` : `Private Test Case #${result.testCaseIndex + 1}`} - 
                                                         <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
                                                     </span>
                                                 </AlertTitle>
-                                                {!result.passed && (
+                                                {!result.passed && result.isPublic && (
                                                     <AlertDescription asChild>
                                                         <div className="mt-2 font-mono text-xs space-y-1">
                                                             <p><b>Input:</b> {result.input}</p>
@@ -321,17 +362,6 @@ export function CodingTestView({ problem }: Props) {
                                                         </div>
                                                     </AlertDescription>
                                                 )}
-                                            </Alert>
-                                        ))}
-                                         {evaluationResults.filter(r => !r.isPublic).map((result) => (
-                                            <Alert key={`private-${result.testCaseIndex}`} variant={result.passed ? 'default' : 'destructive'}>
-                                                <AlertTitle className="flex items-center gap-2">
-                                                    {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                                                    <span>
-                                                        Private Test Case #{result.testCaseIndex + 1} - 
-                                                        <span className="font-bold">{result.passed ? 'Passed' : 'Failed'}</span>
-                                                    </span>
-                                                </AlertTitle>
                                             </Alert>
                                         ))}
                                     </div>
