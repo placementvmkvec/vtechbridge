@@ -22,8 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { evaluateCode } from '@/ai/flows/evaluate-code-flow';
-import type { CodeEvaluationOutput } from '@/ai/schemas/code-evaluation-schemas';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useTheme } from 'next-themes';
@@ -48,12 +47,19 @@ const languageModeMap: Record<string, string> = {
     'php': 'php',
 }
 
+// A placeholder for the structure of a potential result from an API
+type EvaluationResult = {
+    passed: boolean;
+    message: string;
+    details?: string;
+}
+
 export function CodingTestView({ problem }: Props) {
   const { theme } = useTheme();
   const { toast } = useToast();
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [evaluationResult, setEvaluationResult] = useState<CodeEvaluationOutput | null>(null);
+  const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null);
   
   const editorTheme = theme === 'dark' ? 'monokai' : 'github';
   const languageMode = languageModeMap[problem.language] || 'javascript';
@@ -61,28 +67,54 @@ export function CodingTestView({ problem }: Props) {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setEvaluationResult(null);
-    try {
-      const result = await evaluateCode({
-        problemStatement: problem.problemStatement,
-        userCode: code,
-        language: problem.language,
-        testCases: problem.testCases.map((tc, index) => ({...tc, id: index + 1})),
-      });
-      setEvaluationResult(result);
-      toast({
-        title: 'Evaluation Complete',
-        description: `Your code passed ${result.testCasesPassed} out of ${result.totalTestCases} test cases.`,
-      });
-    } catch (error) {
-      console.error('Error evaluating code:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Evaluation Failed',
-        description: 'An unexpected error occurred while evaluating your code.',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+
+    toast({
+        title: "Feature in Progress",
+        description: "The connection to a code execution engine (like Sphere Engine) has not been implemented yet."
+    });
+
+    // =================================================================================
+    // TODO: Implement Sphere Engine API Call Here
+    //
+    // 1. Get your Sphere Engine access token and endpoint from your Sphere Engine account.
+    //
+    // 2. Make a POST request to the Sphere Engine API with the user's `code`,
+    //    the `problem.language`, and the `problem.testCases`.
+    //
+    // 3. The API will return the results of the execution.
+    //
+    // 4. Process the results and update the UI using setEvaluationResult().
+    //
+    // Example conceptual code:
+    //
+    // try {
+    //   const sphereEngineResult = await callSphereEngineAPI({
+    //     accessToken: 'YOUR_SPHERE_ENGINE_TOKEN',
+    //     endpoint: 'YOUR_SPHERE_ENGINE_ENDPOINT',
+    //     language: problem.language,
+    //     sourceCode: code,
+    //     testCases: problem.testCases,
+    //   });
+    //
+    //   // Process the result from Sphere Engine
+    //   const passed = sphereEngineResult.allTestsPassed;
+    //   setEvaluationResult({
+    //      passed: passed,
+    //      message: passed ? "All test cases passed!" : "Some test cases failed.",
+    //      details: sphereEngineResult.feedback,
+    //   });
+    //
+    // } catch (error) {
+    //    toast({ variant: 'destructive', title: 'Evaluation Failed' });
+    // } finally {
+    //    setIsSubmitting(false);
+    // }
+    // =================================================================================
+
+    // For now, we'll just simulate a delay.
+    setTimeout(() => {
+        setIsSubmitting(false);
+    }, 2000);
   };
 
   return (
@@ -138,33 +170,20 @@ export function CodingTestView({ problem }: Props) {
                     </CardContent>
                 </Card>
                 {evaluationResult && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Evaluation Results</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center gap-4">
-                                {evaluationResult.testCasesPassed === evaluationResult.totalTestCases ? (
-                                    <CheckCircle className="h-10 w-10 text-green-500" />
-                                ) : (
-                                    <AlertCircle className="h-10 w-10 text-destructive" />
-                                )}
-                                <div>
-                                    <p className="font-bold text-lg">
-                                        {evaluationResult.testCasesPassed} / {evaluationResult.totalTestCases} Test Cases Passed
-                                    </p>
-                                </div>
-                            </div>
-                            <div>
-                                <h4 className="font-semibold">Feedback:</h4>
-                                <p className="text-sm text-muted-foreground p-2 bg-muted rounded-md">{evaluationResult.feedback}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <Alert variant={evaluationResult.passed ? 'default' : 'destructive'}>
+                        {evaluationResult.passed ? 
+                            <CheckCircle className="h-4 w-4" /> : 
+                            <AlertCircle className="h-4 w-4" />
+                        }
+                        <AlertTitle>{evaluationResult.passed ? "Success" : "Failed"}</AlertTitle>
+                        <AlertDescription>
+                            {evaluationResult.message}
+                            {evaluationResult.details && <p className="text-xs mt-2">{evaluationResult.details}</p>}
+                        </AlertDescription>
+                    </Alert>
                 )}
             </div>
         </div>
     </div>
   );
 }
-
