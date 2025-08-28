@@ -46,25 +46,6 @@ const languageModeMap: Record<string, string> = {
     'php': 'php',
 };
 
-type LanguageIdMap = {
-    [key: string]: number;
-};
-
-const languageIdMap: LanguageIdMap = {
-    'javascript': 93, // Judge0 ID for JavaScript (Node.js)
-    'python': 71, // Judge0 ID for Python 3.8.1
-    'java': 62, // Judge0 ID for Java (OpenJDK 13.0.1)
-    'csharp': 51, // Judge- ID for C# (Mono 6.6.0.161)
-    'cpp': 54, // Judge0 ID for C++ (GCC 9.2.0)
-    'c': 50, // Judge0 ID for C (GCC 9.2.0)
-    'typescript': 74, // Judge0 ID for TypeScript (3.7.4)
-    'go': 60, // Judge0 ID for Go (1.13.5)
-    'rust': 73, // Judge0 ID for Rust (1.40.0)
-    'swift': 83, // Judge0 ID for Swift (5.2.3)
-    'kotlin': 78, // Judge0 ID for Kotlin (1.3.70)
-    'php': 68, // Judge0 ID for PHP (7.4.1)
-};
-
 type EvaluationResult = {
     testCaseIndex: number;
     passed: boolean;
@@ -72,6 +53,23 @@ type EvaluationResult = {
     expected: string;
     error?: string;
 };
+
+// Map our language names to the version/name the new API expects
+const languageVersionMap: { [key: string]: string } = {
+    'javascript': 'javascript',
+    'python': 'python3',
+    'java': 'java',
+    'csharp': 'csharp',
+    'cpp': 'cpp',
+    'c': 'c',
+    'typescript': 'typescript',
+    'go': 'go',
+    'rust': 'rust',
+    'swift': 'swift',
+    'kotlin': 'kotlin',
+    'php': 'php',
+};
+
 
 export function CodingTestView({ problem }: Props) {
   const { theme } = useTheme();
@@ -86,65 +84,58 @@ export function CodingTestView({ problem }: Props) {
     setIsSubmitting(true);
     setEvaluationResults([]);
 
-    const languageId = languageIdMap[problem.language];
-    if (!languageId) {
-        alert("Selected language is not supported by the compiler.");
-        setIsSubmitting(false);
-        return;
-    }
-    
     const results: EvaluationResult[] = [];
 
     for (let i = 0; i < problem.testCases.length; i++) {
         const testCase = problem.testCases[i];
         try {
-            const response = await fetch('/api/run-code', {
+            const response = await fetch('https://emkc.org/api/v2/piston/execute', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    language_id: languageId,
-                    source_code: code,
+                    language: languageVersionMap[problem.language] || 'javascript',
+                    version: '*', // Use the latest available version
+                    files: [{ content: code }],
                     stdin: testCase.input,
                 }),
             });
-
+            
             const result = await response.json();
             
-            if (!response.ok) {
-                const errorMessage = result.error || (result.details ? JSON.stringify(result.details) : 'Failed to execute code.');
-                throw new Error(errorMessage);
-            }
-
             let output = '';
             let hasError = false;
             let errorMessage = '';
 
-            if (result.status?.id === 3) { // Status 3 is "Accepted"
-                output = result.stdout ? result.stdout.trim() : '';
-            } else { // Any other status is considered an error (Compile Error, Runtime Error, etc.)
+            if (result.run && result.run.code === 0) { // Successful execution
+                output = result.run.stdout.trim();
+                if (result.run.stderr) { // Non-fatal error message
+                    errorMessage = result.run.stderr;
+                }
+            } else { // Execution failed (compile error, runtime error, etc.)
                 hasError = true;
-                errorMessage = result.stderr || result.compile_output || `Execution failed with status: ${result.status?.description}`;
+                errorMessage = result.run?.stderr || result.message || 'An unknown execution error occurred.';
                 output = errorMessage;
             }
             
             const passed = !hasError && output === testCase.output.trim();
+
             results.push({
                 testCaseIndex: i,
                 passed,
                 output,
                 expected: testCase.output,
-                error: hasError ? errorMessage : undefined,
+                error: hasError || errorMessage ? (errorMessage || output) : undefined,
             });
 
         } catch (error: any) {
             results.push({
                 testCaseIndex: i,
                 passed: false,
-                output: "Execution Error",
+                output: "API Communication Error",
                 expected: testCase.output,
-                error: error.message
+                error: "Failed to connect to the execution service."
             });
         }
         // Update results after each test case
