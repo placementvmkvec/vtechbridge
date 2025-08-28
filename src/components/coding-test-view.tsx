@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle, Loader2, Play, Shield, Unlock, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, Play, Shield, Unlock } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useTheme } from 'next-themes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -64,11 +64,11 @@ const languageModeMap: Record<string, string> = {
 };
 
 type EvaluationResult = {
-    testCaseIndex?: number;
-    isPublic?: boolean;
+    testCaseIndex: number;
+    isPublic: boolean;
     passed: boolean;
     output: string;
-    expected?: string;
+    expected: string;
     error?: string;
     input: string;
 };
@@ -77,25 +77,24 @@ type EvaluationResult = {
 export function CodingTestView({ problem }: Props) {
   const { theme } = useTheme();
   const [code, setCode] = useState('');
-  const [isRunning, setIsRunning] = useState(false);
+  const [isRunningCustom, setIsRunningCustom] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [customInput, setCustomInput] = useState('');
-  const [runResult, setRunResult] = useState<EvaluationResult | null>(null);
+  const [customRunResult, setCustomRunResult] = useState<EvaluationResult | null>(null);
 
-  const [publicTestRunResults, setPublicTestRunResults] = useState<EvaluationResult[]>([]);
   const [submissionResults, setSubmissionResults] = useState<EvaluationResult[]>([]);
   const [totalScore, setTotalScore] = useState<number | null>(null);
   
   const editorTheme = theme === 'dark' ? 'monokai' : 'github';
   const languageMode = languageModeMap[problem.language] || 'javascript';
   
-  const executeCode = async (testCases: {input: string, output: string}[], isPrivateRun: boolean): Promise<EvaluationResult[]> => {
+  const executeCode = async (testCases: {input: string, output: string}[], isPublic: boolean): Promise<EvaluationResult[]> => {
     const languageVersion = languageVersionMap[problem.language];
     if (!languageVersion) {
         return testCases.map((tc, index) => ({
              testCaseIndex: index,
-             isPublic: !isPrivateRun,
+             isPublic,
              passed: false,
              output: `Language ${problem.language} is not supported.`,
              expected: tc.output,
@@ -118,7 +117,7 @@ export function CodingTestView({ problem }: Props) {
         const error = data.run?.stderr;
         return {
             testCaseIndex: index,
-            isPublic: !isPrivateRun,
+            isPublic,
             passed: !error && output === tc.output,
             output: output,
             expected: tc.output,
@@ -128,7 +127,7 @@ export function CodingTestView({ problem }: Props) {
     }).catch(err => {
          return {
             testCaseIndex: index,
-            isPublic: !isPrivateRun,
+            isPublic,
             passed: false,
             output: `API Error: ${err.message}`,
             expected: tc.output,
@@ -140,25 +139,17 @@ export function CodingTestView({ problem }: Props) {
     return Promise.all(promises);
   }
 
-  const handleRunPublicTests = async () => {
-    setIsRunning(true);
-    setPublicTestRunResults([]);
-    const results = await executeCode(problem.publicTestCases, false);
-    setPublicTestRunResults(results || []);
-    setIsRunning(false);
-  }
-
   const handleRunCustom = async () => {
-      setIsRunning(true);
-      setRunResult(null);
+      setIsRunningCustom(true);
+      setCustomRunResult(null);
 
       const results = await executeCode([{input: customInput, output: ''}], false);
       if (results && results.length > 0) {
-        setRunResult({ ...results[0], passed: false, isPublic: false });
+        setCustomRunResult({ ...results[0], passed: false });
       } else {
-        setRunResult({ passed: false, input: customInput, output: "Execution failed or produced no output.", error: "Execution failed"});
+        setCustomRunResult({ isPublic: false, testCaseIndex: 0, passed: false, input: customInput, output: "Execution failed or produced no output.", error: "Execution failed", expected: ''});
       }
-      setIsRunning(false);
+      setIsRunningCustom(false);
   }
 
   const handleSubmit = async () => {
@@ -166,27 +157,25 @@ export function CodingTestView({ problem }: Props) {
     setSubmissionResults([]);
     setTotalScore(null);
 
-    const results = await executeCode(problem.privateTestCases, true);
-    if (results) {
-        setSubmissionResults(results);
-        const passedCount = results.filter((r: EvaluationResult) => r.passed).length;
-        setTotalScore(passedCount * problem.pointsPerCase);
-    }
+    const publicResults = await executeCode(problem.publicTestCases, true);
+    const privateResults = await executeCode(problem.privateTestCases, false);
+    
+    const allResults = [...publicResults, ...privateResults];
+    setSubmissionResults(allResults);
+
+    const passedPrivateCount = privateResults.filter((r: EvaluationResult) => r.passed).length;
+    setTotalScore(passedPrivateCount * problem.pointsPerCase);
     
     setIsSubmitting(false);
   };
 
-  const isLoading = isRunning || isSubmitting;
+  const isLoading = isRunningCustom || isSubmitting;
 
   return (
     <div className="flex flex-col h-screen p-4 gap-4 bg-secondary">
         <header className="flex justify-between items-center bg-background p-4 rounded-lg shadow-sm">
             <h1 className="text-xl font-bold font-headline">{problem.title}</h1>
             <div className="flex items-center gap-2">
-                 <Button onClick={handleRunPublicTests} disabled={isLoading} variant="outline">
-                    {isRunning && !isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                    {isRunning && !isSubmitting ? 'Running...' : 'Run Public Tests'}
-                </Button>
                 <Button onClick={handleSubmit} disabled={isLoading}>
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
                     {isSubmitting ? 'Submitting...' : 'Submit Final Code'}
@@ -195,18 +184,40 @@ export function CodingTestView({ problem }: Props) {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
-            <Card className="flex flex-col">
-                <CardHeader>
-                    <CardTitle>Problem Statement</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-hidden">
-                    <ScrollArea className="h-full">
+            <ScrollArea className="h-full">
+            <div className="flex flex-col gap-4">
+                <Card className="flex flex-col">
+                    <CardHeader>
+                        <CardTitle>Problem Statement</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-1 overflow-hidden">
                         <div className="prose dark:prose-invert max-w-full p-2">
                            <Markdown>{problem.problemStatement}</Markdown>
                         </div>
-                    </ScrollArea>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Unlock className="h-5 w-5" /> Public Test Cases
+                        </CardTitle>
+                        <CardDescription>
+                            These are the examples your code will be tested against. Your submission must pass these as well as hidden private tests.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {problem.publicTestCases.map((tc, index) => (
+                            <div key={index} className="p-4 bg-secondary rounded-lg font-mono text-sm">
+                                <p className="font-semibold">Test Case #{index + 1}</p>
+                                <p><span className="text-muted-foreground">Input:</span> {tc.input}</p>
+                                <p><span className="text-muted-foreground">Expected Output:</span> {tc.output}</p>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            </div>
+            </ScrollArea>
+            
 
             <div className="flex flex-col gap-4 min-h-0">
                 <Card className="flex-1 flex flex-col">
@@ -238,34 +249,15 @@ export function CodingTestView({ problem }: Props) {
                     </CardContent>
                 </Card>
                 
-                 <Card className="max-h-[300px] overflow-y-auto">
+                 <Card className="max-h-[350px] overflow-y-auto">
                     <Tabs defaultValue="results">
                          <TabsList className="w-full grid grid-cols-2">
-                            <TabsTrigger value="results">Test Results</TabsTrigger>
+                            <TabsTrigger value="results">Submission Results</TabsTrigger>
                             <TabsTrigger value="custom">Custom Input</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="results" className="p-4 space-y-4">
-                            {publicTestRunResults.length > 0 ? (
-                                publicTestRunResults.map((result, index) => (
-                                    <Alert key={index} variant={result.passed ? 'default' : 'destructive'}>
-                                        <AlertTitle className="flex items-center gap-2">
-                                            {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                                            Public Test Case #{index + 1} - {result.passed ? 'Passed' : 'Failed'}
-                                        </AlertTitle>
-                                        {!result.passed && (
-                                            <AlertDescription asChild>
-                                                <div className="mt-2 font-mono text-xs space-y-1">
-                                                <p><b>Input:</b> {result.input}</p>
-                                                <p><b>Expected:</b> {result.expected}</p>
-                                                <p><b>Your Output:</b> {result.output}</p>
-                                                {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
-                                                </div>
-                                            </AlertDescription>
-                                        )}
-                                    </Alert>
-                                ))
-                            ) : submissionResults.length > 0 ? (
+                             {submissionResults.length > 0 ? (
                                 <>
                                     <Alert variant={totalScore !== null && totalScore > 0 ? 'default' : 'destructive'}>
                                          <AlertTitle className="flex items-center gap-2">
@@ -273,30 +265,37 @@ export function CodingTestView({ problem }: Props) {
                                             Final Submission Result
                                         </AlertTitle>
                                         <AlertDescription>
-                                            You passed {submissionResults.filter(r => r.passed).length} out of {submissionResults.length} private test cases.
+                                            You passed {submissionResults.filter(r => !r.isPublic && r.passed).length} out of {problem.privateTestCases.length} private test cases.
                                             <p className="font-bold text-lg">Total Score: {totalScore ?? 0}</p>
                                         </AlertDescription>
                                     </Alert>
                                     {submissionResults.map((result, index) => (
-                                         <Alert key={index} variant={result.passed ? 'default' : 'destructive'}>
+                                        <Alert key={index} variant={result.passed ? 'default' : 'destructive'}>
                                             <AlertTitle className="flex items-center gap-2">
                                                 {result.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                                                Private Test Case #{index + 1} - {result.passed ? 'Passed' : 'Failed'}
+                                                {result.isPublic ? `Public Test Case #${result.testCaseIndex + 1}` : `Private Test Case #${result.testCaseIndex + 1}`} - {result.passed ? 'Passed' : 'Failed'}
                                             </AlertTitle>
-                                             {!result.passed && (
+                                            {!result.passed && result.isPublic && (
                                                 <AlertDescription asChild>
                                                     <div className="mt-2 font-mono text-xs space-y-1">
-                                                    <p>Your code did not produce the expected output.</p>
-                                                     {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
+                                                        <p><b>Input:</b> {result.input}</p>
+                                                        <p><b>Expected:</b> {result.expected}</p>
+                                                        <p><b>Your Output:</b> {result.output}</p>
+                                                        {result.error && <p className="mt-1"><b>Error:</b> {result.error}</p>}
                                                     </div>
                                                 </AlertDescription>
                                             )}
+                                             {!result.passed && !result.isPublic && (
+                                                <AlertDescription>
+                                                    Your code did not produce the expected output for this hidden test case.
+                                                </AlertDescription>
+                                             )}
                                         </Alert>
                                     ))}
                                 </>
                             ) : (
                                 <div className="text-center text-sm text-muted-foreground p-4">
-                                    Click "Run Public Tests" to see the results here or "Submit" to see your score.
+                                    Click "Submit Final Code" to see your score and results.
                                 </div>
                             )}
                         </TabsContent>
@@ -306,20 +305,20 @@ export function CodingTestView({ problem }: Props) {
                                 <Label htmlFor="custom-input" className="mb-2 block">Custom Input</Label>
                                 <Textarea id="custom-input" value={customInput} onChange={(e) => setCustomInput(e.target.value)} placeholder="Enter your test input here..." rows={3} />
                                 <Button onClick={handleRunCustom} disabled={isLoading} variant="secondary" size="sm" className="mt-2">
-                                    {isRunning && !isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                                    {isRunningCustom ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
                                     Run Custom Input
                                 </Button>
                             </div>
-                            {runResult && (
+                            {customRunResult && (
                                  <div>
                                     <Label className="mb-2 block">Output</Label>
-                                    <Alert variant={runResult.error ? 'destructive' : 'default'}>
+                                    <Alert variant={customRunResult.error ? 'destructive' : 'default'}>
                                         <AlertTitle className="flex items-center gap-2">
-                                            {runResult.error ? <AlertCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-                                            {runResult.error ? 'Execution Error' : 'Execution Success'}
+                                            {customRunResult.error ? <AlertCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                                            {customRunResult.error ? 'Execution Error' : 'Execution Success'}
                                         </AlertTitle>
                                         <AlertDescription asChild>
-                                            <pre className="mt-2 font-mono text-xs whitespace-pre-wrap">{runResult.output}</pre>
+                                            <pre className="mt-2 font-mono text-xs whitespace-pre-wrap">{customRunResult.output}</pre>
                                         </AlertDescription>
                                     </Alert>
                                 </div>
