@@ -31,13 +31,13 @@ export async function POST(req: Request) {
     const response = await fetch('https://online-compiler.p.rapidapi.com/submissions?base64_encoded=false&wait=true', options);
     
     if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.text();
         console.error('Compiler API Error:', errorData);
         return NextResponse.json({ error: 'Failed to execute code.', details: errorData }, { status: response.status });
     }
 
     const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    return NextResponse.json(data, { status: 200 });
 
   } catch (error: any) {
     console.error('Error calling compiler API:', error);
