@@ -20,6 +20,11 @@ export function AdminNav() {
       active: pathname.startsWith("/admin/exams"),
     },
     {
+      href: "/admin/coding",
+      label: "Coding",
+      active: pathname.startsWith("/admin/coding"),
+    },
+    {
       href: "/admin/users",
       label: "Users",
       active: pathname === "/admin/users",
@@ -50,3 +55,5 @@ export function AdminNav() {
     </nav>
   );
 }
+
+    

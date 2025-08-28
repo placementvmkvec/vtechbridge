@@ -6,7 +6,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, setDoc, collection, getDocs, query, orderBy, Timestamp, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, getDocs, query, orderBy, Timestamp, deleteDoc, addDoc } from 'firebase/firestore';
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -113,7 +113,9 @@ export default function AdminDashboardPage() {
   const [isCreatingExam, setIsCreatingExam] = useState(false);
   const [isCreatingCodingProblem, setIsCreatingCodingProblem] = useState(false);
 
-  const formRef = useRef<HTMLFormElement>(null);
+  const [examFormRef, setExamFormRef] = useState<HTMLFormElement | null>(null);
+  const [codingFormRef, setCodingFormRef] = useState<HTMLFormElement | null>(null);
+
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [stats, setStats] = useState({ totalExams: 0, totalUsers: 0, submissionsToday: 0 });
   const [chartData, setChartData] = useState<any[]>([]);
@@ -219,7 +221,7 @@ export default function AdminDashboardPage() {
 
   const handleCreateExam = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = formRef.current;
+    const form = examFormRef;
     if (!form) return;
     
     setIsCreatingExam(true);
@@ -360,14 +362,44 @@ export default function AdminDashboardPage() {
 
   const handleCreateCodingProblem = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = codingFormRef;
+    if (!form) return;
+
     setIsCreatingCodingProblem(true);
-    // Logic to save coding problem will go here
-    console.log("Creating coding problem...");
-    // Reset form or give feedback
-    setTimeout(() => {
+    
+    const formData = new FormData(form);
+    const title = formData.get('coding-title') as string;
+    const language = formData.get('language') as string;
+    const problemStatement = formData.get('problem-statement') as string;
+
+    const finalTestCases = testCases.filter(tc => tc.input.trim() !== '' && tc.output.trim() !== '');
+
+    if (!title || !language || !problemStatement || finalTestCases.length === 0) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please fill out all fields and provide at least one valid test case.' });
+      setIsCreatingCodingProblem(false);
+      return;
+    }
+
+    try {
+      const codingProblemsCollectionRef = collection(db, 'coding_problems');
+      await addDoc(codingProblemsCollectionRef, {
+        title,
+        language,
+        problemStatement,
+        testCases: finalTestCases,
+        createdAt: new Date(),
+      });
+      
+      toast({ title: 'Success!', description: `Successfully created coding problem: "${title}"` });
+      form.reset();
+      setTestCases([{ input: '', output: '' }]);
+
+    } catch (error: any) {
+        console.error('Error creating coding problem:', error);
+        toast({ variant: 'destructive', title: 'Creation Failed', description: error.message });
+    } finally {
         setIsCreatingCodingProblem(false);
-        toast({ title: 'Success!', description: 'Coding problem created (simulated).' });
-    }, 1000);
+    }
   };
 
 
@@ -435,7 +467,7 @@ export default function AdminDashboardPage() {
                     <TabsTrigger value="coding"><Code className="mr-2 h-4 w-4"/> Coding Problem</TabsTrigger>
                 </TabsList>
                 <TabsContent value="mcq"  className="pt-4">
-                  <form ref={formRef} onSubmit={handleCreateExam} className="space-y-4">
+                  <form ref={setExamFormRef} onSubmit={handleCreateExam} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="title">Exam Title</Label>
                       <Input id="title" name="title" required placeholder="e.g., Mid-term Examination" />
@@ -477,7 +509,7 @@ export default function AdminDashboardPage() {
                   </form>
                 </TabsContent>
                  <TabsContent value="coding" className="pt-4">
-                   <form onSubmit={handleCreateCodingProblem} className="space-y-4">
+                   <form ref={setCodingFormRef} onSubmit={handleCreateCodingProblem} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="coding-title">Problem Title</Label>
                             <Input id="coding-title" name="coding-title" placeholder="e.g., Two Sum" required />
