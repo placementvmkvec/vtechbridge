@@ -97,13 +97,8 @@ export function CodingTestView({ problem }: Props) {
              error: `API Error: ${response.statusText}`,
              input: tc.input,
         }));
-
-        if (isPrivateRun) {
-            setSubmissionResults(errorResults);
-        } else {
-            setPublicTestRunResults(errorResults);
-        }
-        return;
+        
+        return errorResults;
     }
     
     return response.json();
@@ -273,7 +268,3 @@ export function CodingTestView({ problem }: Props) {
     </div>
   );
 }
-
-    
-
-    
