@@ -459,6 +459,7 @@ export default function AdminDashboardPage() {
                                     <SelectItem value="java">Java</SelectItem>
                                     <SelectItem value="csharp">C#</SelectItem>
                                     <SelectItem value="cpp">C++</SelectItem>
+                                    <SelectItem value="c">C</SelectItem>
                                     <SelectItem value="typescript">TypeScript</SelectItem>
                                     <SelectItem value="go">Go</SelectItem>
                                     <SelectItem value="rust">Rust</SelectItem>
@@ -612,5 +613,3 @@ export default function AdminDashboardPage() {
       </div>
   );
 }
-
-    
