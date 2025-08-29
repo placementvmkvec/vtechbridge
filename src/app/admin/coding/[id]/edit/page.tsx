@@ -81,8 +81,8 @@ export default function EditCodingProblemPage() {
             setLanguage(problemData.language);
             setProblemStatement(problemData.problemStatement);
             setPointsPerCase(problemData.pointsPerCase);
-            setPublicTestCases(problemData.publicTestCases.length > 0 ? problemData.publicTestCases : [{ input: '', output: '' }]);
-            setPrivateTestCases(problemData.privateTestCases.length > 0 ? problemData.privateTestCases : [{ input: '', output: '' }]);
+            setPublicTestCases(problemData.publicTestCases?.length > 0 ? problemData.publicTestCases : [{ input: '', output: '' }]);
+            setPrivateTestCases(problemData.privateTestCases?.length > 0 ? problemData.privateTestCases : [{ input: '', output: '' }]);
           } else {
             toast({ variant: 'destructive', title: 'Error', description: 'Coding problem not found.' });
             router.push('/admin/coding');
