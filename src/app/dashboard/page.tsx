@@ -33,6 +33,7 @@ type CodingProblem = {
   title: string;
   language: string;
   problemStatement: string;
+  isVisible: boolean;
 }
 
 type CodingExam = {
@@ -91,9 +92,9 @@ export default function DashboardPage() {
         exam.problemIds.forEach(id => problemIdsInExams.add(id));
       });
 
-      // Fetch all coding problems and filter out those already in an exam
-      const codingProblemsCollectionRef = collection(db, 'coding_problems');
-      const codingProblemsSnapshot = await getDocs(codingProblemsCollectionRef);
+      // Fetch all visible coding problems and filter out those already in an exam
+      const codingProblemsQuery = query(collection(db, 'coding_problems'), where("isVisible", "==", true));
+      const codingProblemsSnapshot = await getDocs(codingProblemsQuery);
       const allCodingProblems = codingProblemsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()

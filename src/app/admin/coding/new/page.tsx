@@ -108,6 +108,7 @@ export default function CreateCodingProblemPage() {
         publicTestCases: finalPublicTestCases,
         privateTestCases: finalPrivateTestCases,
         createdAt: new Date(),
+        isVisible: true,
       });
       toast({ title: 'Success!', description: `Successfully created coding problem: "${title}"` });
       router.push('/admin/coding');

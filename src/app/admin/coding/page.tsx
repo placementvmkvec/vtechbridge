@@ -11,6 +11,7 @@ import {
   deleteDoc,
   doc,
   Timestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -47,6 +48,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const ADMIN_EMAIL = 'loganathans@vmkvec.edu.in';
 
@@ -63,6 +66,7 @@ type CodingProblem = {
   privateTestCases: TestCase[];
   pointsPerCase: number;
   createdAt: Timestamp;
+  isVisible: boolean;
 };
 
 export default function AdminCodingProblemsPage() {
@@ -121,6 +125,35 @@ export default function AdminCodingProblemsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVisibilityChange = async (problemId: string, isVisible: boolean) => {
+    try {
+      const problemDocRef = doc(db, 'coding_problems', problemId);
+      await updateDoc(problemDocRef, { isVisible });
+      setProblems(prevProblems => 
+        prevProblems.map(problem => 
+          problem.id === problemId ? { ...problem, isVisible } : problem
+        )
+      );
+      toast({
+        title: 'Success',
+        description: `Problem visibility updated.`,
+      });
+    } catch (error) {
+      console.error('Error updating problem visibility:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to update visibility.',
+      });
+      // Revert UI on error
+      setProblems(prevProblems => 
+        prevProblems.map(problem => 
+          problem.id === problemId ? { ...problem, isVisible: !isVisible } : problem
+        )
+      );
     }
   };
 
@@ -183,8 +216,7 @@ export default function AdminCodingProblemsPage() {
               <TableRow>
                 <TableHead>Problem Title</TableHead>
                 <TableHead>Language</TableHead>
-                <TableHead>Public Cases</TableHead>
-                <TableHead>Private Cases</TableHead>
+                <TableHead>Visible to Users</TableHead>
                 <TableHead>Points/Case</TableHead>
                 <TableHead className="hidden md:table-cell">Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -201,10 +233,7 @@ export default function AdminCodingProblemsPage() {
                       <Skeleton className="h-4 w-24" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-4 w-12" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-12" />
+                      <Skeleton className="h-6 w-12" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-12" />
@@ -227,10 +256,14 @@ export default function AdminCodingProblemsPage() {
                       <Badge variant="secondary">{problem.language}</Badge>
                     </TableCell>
                     <TableCell>
-                      {problem.publicTestCases?.length || 0}
-                    </TableCell>
-                    <TableCell>
-                      {problem.privateTestCases?.length || 0}
+                       <div className="flex items-center space-x-2">
+                        <Switch
+                          id={`visibility-${problem.id}`}
+                          checked={problem.isVisible}
+                          onCheckedChange={(checked) => handleVisibilityChange(problem.id, checked)}
+                        />
+                        <Label htmlFor={`visibility-${problem.id}`} className="sr-only">Toggle problem visibility</Label>
+                      </div>
                     </TableCell>
                     <TableCell>{problem.pointsPerCase || 0}</TableCell>
                     <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
