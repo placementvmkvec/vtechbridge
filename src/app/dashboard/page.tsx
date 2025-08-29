@@ -65,7 +65,7 @@ export default function DashboardPage() {
   const fetchAssessments = async (userId: string) => {
     setLoading(true);
     try {
-      // Fetch all exams
+      // Fetch all MCQ exams
       const examsCollectionRef = collection(db, 'exams');
       const examsSnapshot = await getDocs(examsCollectionRef);
       const fetchedExams = examsSnapshot.docs.map(doc => ({
@@ -73,15 +73,6 @@ export default function DashboardPage() {
         ...doc.data()
       })) as Exam[];
       setExams(fetchedExams);
-      
-      // Fetch all coding problems
-      const codingProblemsCollectionRef = collection(db, 'coding_problems');
-      const codingProblemsSnapshot = await getDocs(codingProblemsCollectionRef);
-      const fetchedCodingProblems = codingProblemsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as CodingProblem[];
-      setCodingProblems(fetchedCodingProblems);
       
       // Fetch all coding exams
       const codingExamsCollectionRef = collection(db, 'coding_exams');
@@ -92,6 +83,25 @@ export default function DashboardPage() {
       })) as CodingExam[];
       setCodingExams(fetchedCodingExams);
 
+      // Get a set of all problem IDs that are part of an exam
+      const problemIdsInExams = new Set<string>();
+      fetchedCodingExams.forEach(exam => {
+        exam.problemIds.forEach(id => problemIdsInExams.add(id));
+      });
+
+      // Fetch all coding problems and filter out those already in an exam
+      const codingProblemsCollectionRef = collection(db, 'coding_problems');
+      const codingProblemsSnapshot = await getDocs(codingProblemsCollectionRef);
+      const allCodingProblems = codingProblemsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as CodingProblem[];
+
+      const standaloneCodingProblems = allCodingProblems.filter(
+        problem => !problemIdsInExams.has(problem.id)
+      );
+      setCodingProblems(standaloneCodingProblems);
+      
       // Fetch user's submissions to check for completed exams
       const submissionsQuery = query(collection(db, "submissions"), where("userId", "==", userId));
       const submissionsSnapshot = await getDocs(submissionsQuery);
