@@ -51,6 +51,8 @@ export default function DashboardPage() {
   const [codingProblems, setCodingProblems] = useState<CodingProblem[]>([]);
   const [codingExams, setCodingExams] = useState<CodingExam[]>([]);
   const [completedExams, setCompletedExams] = useState<Set<string>>(new Set());
+  const [completedCodingProblems, setCompletedCodingProblems] = useState<Set<string>>(new Set());
+  const [completedCodingExams, setCompletedCodingExams] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -105,11 +107,24 @@ export default function DashboardPage() {
       );
       setCodingProblems(standaloneCodingProblems);
       
-      // Fetch user's submissions to check for completed exams
-      const submissionsQuery = query(collection(db, "submissions"), where("userId", "==", userId));
-      const submissionsSnapshot = await getDocs(submissionsQuery);
-      const completed = new Set(submissionsSnapshot.docs.map(doc => doc.data().examId));
-      setCompletedExams(completed);
+      // Fetch user's MCQ submissions to check for completed exams
+      const mcqSubmissionsQuery = query(collection(db, "submissions"), where("userId", "==", userId));
+      const mcqSubmissionsSnapshot = await getDocs(mcqSubmissionsQuery);
+      const completedMcq = new Set(mcqSubmissionsSnapshot.docs.map(doc => doc.data().examId));
+      setCompletedExams(completedMcq);
+
+      // Fetch user's coding problem submissions
+      const codingSubmissionsQuery = query(collection(db, "coding_submissions"), where("userId", "==", userId));
+      const codingSubmissionsSnapshot = await getDocs(codingSubmissionsQuery);
+      const completedCoding = new Set(codingSubmissionsSnapshot.docs.map(doc => doc.data().problemId));
+      setCompletedCodingProblems(completedCoding);
+
+       // Fetch user's coding exam submissions
+      const codingExamSubmissionsQuery = query(collection(db, "coding_exam_submissions"), where("userId", "==", userId));
+      const codingExamSubmissionsSnapshot = await getDocs(codingExamSubmissionsQuery);
+      const completedCodingExam = new Set(codingExamSubmissionsSnapshot.docs.map(doc => doc.data().examId));
+      setCompletedCodingExams(completedCodingExam);
+
 
     } catch (error) {
       console.error("Error fetching data: ", error);
@@ -154,7 +169,7 @@ export default function DashboardPage() {
             {exams.map((exam) => {
               const isCompleted = completedExams.has(exam.id);
               return (
-                <div key={exam.id} className={`flip-card h-[280px] ${isCompleted ? 'opacity-70 pointer-events-none' : ''}`}>
+                <div key={exam.id} className={`flip-card h-[280px] ${isCompleted ? 'opacity-70' : ''}`}>
                   <div className="flip-card-inner">
                     <div className="flip-card-front">
                       <Card className="flex flex-col h-full shadow-lg border-transparent hover:border-primary transition-colors relative">
@@ -192,7 +207,7 @@ export default function DashboardPage() {
                           </CardHeader>
                           <CardContent className="flex-grow" />
                           <CardFooter>
-                            <Link href={`/test/${exam.id}`} className="w-full">
+                            <Link href={`/test/${exam.id}`} className="w-full" style={{ pointerEvents: isCompleted ? 'none' : 'auto' }}>
                               <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105" disabled={isCompleted}>
                                 {isCompleted ? 'Test Completed' : <>Start Test <ArrowRight className="ml-2 h-4 w-4" /></>}
                               </Button>
@@ -204,11 +219,19 @@ export default function DashboardPage() {
                 </div>
               )
             })}
-             {codingExams.map((exam) => (
-                <div key={exam.id} className="flip-card h-[280px]">
+             {codingExams.map((exam) => {
+               const isCompleted = completedCodingExams.has(exam.id);
+               return (
+                <div key={exam.id} className={`flip-card h-[280px] ${isCompleted ? 'opacity-70' : ''}`}>
                   <div className="flip-card-inner">
                     <div className="flip-card-front">
-                       <Card className="flex flex-col h-full shadow-lg border-transparent hover:border-primary transition-colors">
+                       <Card className="flex flex-col h-full shadow-lg border-transparent hover:border-primary transition-colors relative">
+                        {isCompleted && (
+                            <div className="absolute top-4 right-4 flex items-center gap-2 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-3 py-1 rounded-full text-xs font-semibold">
+                                <CheckCircle className="h-4 w-4" />
+                                <span>Completed</span>
+                            </div>
+                        )}
                         <CardHeader>
                           <CardTitle className="font-headline text-xl flex items-center justify-between">
                             {exam.title}
@@ -226,7 +249,7 @@ export default function DashboardPage() {
                         </CardContent>
                         <CardFooter>
                            <div className="text-sm text-primary font-semibold">
-                               Hover to see details & start
+                                {isCompleted ? "You have already taken this exam" : "Hover to see details & start"}
                             </div>
                         </CardFooter>
                       </Card>
@@ -239,9 +262,9 @@ export default function DashboardPage() {
                           </CardHeader>
                           <CardContent className="flex-grow" />
                           <CardFooter>
-                            <Link href={`/coding-exam/${exam.id}`} className="w-full">
-                              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105">
-                                Start Exam <ArrowRight className="ml-2 h-4 w-4" />
+                            <Link href={`/coding-exam/${exam.id}`} className="w-full" style={{ pointerEvents: isCompleted ? 'none' : 'auto' }}>
+                              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105" disabled={isCompleted}>
+                                {isCompleted ? 'Exam Completed' : <>Start Exam <ArrowRight className="ml-2 h-4 w-4" /></>}
                               </Button>
                             </Link>
                           </CardFooter>
@@ -249,12 +272,21 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
-              ))}
-             {codingProblems.map((problem) => (
-                <div key={problem.id} className="flip-card h-[280px]">
+               )
+              })}
+             {codingProblems.map((problem) => {
+               const isCompleted = completedCodingProblems.has(problem.id);
+               return (
+                <div key={problem.id} className={`flip-card h-[280px] ${isCompleted ? 'opacity-70' : ''}`}>
                   <div className="flip-card-inner">
                     <div className="flip-card-front">
-                       <Card className="flex flex-col h-full shadow-lg border-transparent hover:border-primary transition-colors">
+                       <Card className="flex flex-col h-full shadow-lg border-transparent hover:border-primary transition-colors relative">
+                        {isCompleted && (
+                            <div className="absolute top-4 right-4 flex items-center gap-2 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-3 py-1 rounded-full text-xs font-semibold">
+                                <CheckCircle className="h-4 w-4" />
+                                <span>Completed</span>
+                            </div>
+                        )}
                         <CardHeader>
                           <CardTitle className="font-headline text-xl flex items-center justify-between">
                             {problem.title}
@@ -269,8 +301,8 @@ export default function DashboardPage() {
                         </CardContent>
                         <CardFooter>
                            <div className="text-sm text-primary font-semibold">
-                               Hover to see details & start
-                            </div>
+                                {isCompleted ? "You have already completed this" : "Hover to see details & start"}
+                           </div>
                         </CardFooter>
                       </Card>
                     </div>
@@ -282,9 +314,9 @@ export default function DashboardPage() {
                           </CardHeader>
                           <CardContent className="flex-grow" />
                           <CardFooter>
-                            <Link href={`/coding/${problem.id}`} className="w-full">
-                              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105">
-                                Start Challenge <ArrowRight className="ml-2 h-4 w-4" />
+                            <Link href={`/coding/${problem.id}`} className="w-full" style={{ pointerEvents: isCompleted ? 'none' : 'auto' }}>
+                              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105" disabled={isCompleted}>
+                                {isCompleted ? 'Challenge Completed' : <>Start Challenge <ArrowRight className="ml-2 h-4 w-4" /></>}
                               </Button>
                             </Link>
                           </CardFooter>
@@ -292,7 +324,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </>
           ) : (
             <div className="col-span-full text-center py-12 bg-card rounded-lg">

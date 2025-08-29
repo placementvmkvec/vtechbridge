@@ -12,6 +12,7 @@ import {
   doc,
   getDoc,
   Timestamp,
+  deleteDoc,
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter, useParams } from 'next/navigation';
@@ -33,11 +34,13 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Eye } from 'lucide-react';
+import { ArrowLeft, Eye, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
 
 const ADMIN_EMAIL = 'loganathans@vmkvec.edu.in';
 
@@ -69,6 +72,7 @@ export default function ExamSubmissionsPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [exam, setExam] = useState<Exam | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -130,6 +134,26 @@ export default function ExamSubmissionsPage() {
       setLoading(false);
     }
   };
+  
+  const handleDeleteSubmission = async () => {
+    if (!submissionToDelete) return;
+    try {
+      await deleteDoc(doc(db, 'submissions', submissionToDelete.id));
+      toast({
+        title: 'Success',
+        description: `Submission from "${submissionToDelete.userName}" has been deleted. They can now re-attempt the exam.`,
+      });
+      fetchExamAndSubmissions(); // Refresh the list
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to delete submission.',
+      });
+    } finally {
+      setSubmissionToDelete(null);
+    }
+  };
 
   if (!adminUser) {
     return (
@@ -185,8 +209,9 @@ export default function ExamSubmissionsPage() {
                     <TableCell className="hidden sm:table-cell">
                       <Skeleton className="h-4 w-24" />
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-2">
                       <Skeleton className="h-8 w-8 rounded-md" />
+                       <Skeleton className="h-8 w-8 rounded-md" />
                     </TableCell>
                   </TableRow>
                 ))
@@ -227,13 +252,33 @@ export default function ExamSubmissionsPage() {
                           })
                         : 'N/A'}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-2">
                       <Link href={`/admin/submissions/${sub.id}`}>
                         <Button variant="outline" size="icon">
                           <Eye className="h-4 w-4" />
                           <span className="sr-only">View Details</span>
                         </Button>
                       </Link>
+                      <AlertDialog open={!!submissionToDelete && submissionToDelete.id === sub.id} onOpenChange={(open) => !open && setSubmissionToDelete(null)}>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="icon" onClick={() => setSubmissionToDelete(sub)}>
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete Submission</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action will permanently delete this submission. The user will be able to re-attempt the exam.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteSubmission}>Continue</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </TableCell>
                   </TableRow>
                 ))

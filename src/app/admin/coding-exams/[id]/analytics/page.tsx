@@ -5,11 +5,11 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, BrainCircuit, File, FileText } from 'lucide-react';
+import { ArrowLeft, BrainCircuit, File, FileText, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
@@ -22,6 +22,8 @@ import * as xlsx from 'xlsx';
 import Markdown from 'react-markdown';
 import { analyzeCodingExam } from '@/ai/flows/analyze-coding-exam-flow';
 import type { CodingExamAnalysisInput, CodingExamAnalysisOutput } from '@/ai/schemas/coding-exam-analysis-schemas';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
 
 const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
 
@@ -57,6 +59,7 @@ export default function CodingExamAnalyticsPage() {
     const [exam, setExam] = useState<CodingExam | null>(null);
     const [submissions, setSubmissions] = useState<Submission[]>([]);
     const [analytics, setAnalytics] = useState<ProblemAnalytics[]>([]);
+    const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
     
     const [isGeneratingAIReport, setIsGeneratingAIReport] = useState(false);
     const [aiAnalysis, setAiAnalysis] = useState<CodingExamAnalysisOutput | null>(null);
@@ -135,6 +138,26 @@ export default function CodingExamAnalyticsPage() {
             toast({ variant: 'destructive', title: "Error", description: "Failed to fetch analytics." });
         } finally {
             setLoading(false);
+        }
+    };
+    
+    const handleDeleteSubmission = async () => {
+        if (!submissionToDelete) return;
+        try {
+            await deleteDoc(doc(db, 'coding_exam_submissions', submissionToDelete.id));
+            toast({
+                title: 'Success',
+                description: `Submission from "${submissionToDelete.userName}" has been deleted. They can now re-attempt the exam.`,
+            });
+            fetchAnalyticsData(); // Refresh the list
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Failed to delete submission.',
+            });
+        } finally {
+            setSubmissionToDelete(null);
         }
     };
     
@@ -334,7 +357,8 @@ export default function CodingExamAnalyticsPage() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Student</TableHead>
-                                        <TableHead className="text-right">Total Score</TableHead>
+                                        <TableHead className="text-center">Total Score</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -352,8 +376,30 @@ export default function CodingExamAnalyticsPage() {
                                                     </div>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-right font-semibold">
+                                            <TableCell className="text-center font-semibold">
                                                 <Badge variant={sub.totalScore > 0 ? 'default' : 'destructive'}>{sub.totalScore}</Badge>
+                                            </TableCell>
+                                             <TableCell className="text-right">
+                                                <AlertDialog open={!!submissionToDelete && submissionToDelete.id === sub.id} onOpenChange={(open) => !open && setSubmissionToDelete(null)}>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="destructive" size="icon" onClick={() => setSubmissionToDelete(sub)}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                            <span className="sr-only">Delete Submission</span>
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This action will permanently delete this submission. The user will be able to re-attempt the exam.
+                                                        </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={handleDeleteSubmission}>Continue</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
                                             </TableCell>
                                         </TableRow>
                                     ))}

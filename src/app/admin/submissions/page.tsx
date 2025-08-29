@@ -3,7 +3,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, getDocs, query, where, orderBy, doc, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, doc, getDoc, Timestamp, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,9 +12,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { Eye } from 'lucide-react';
+import { Eye, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
 
@@ -37,10 +39,13 @@ type Exam = {
 
 function SubmissionsContent() {
   const router = useRouter();
+  const { toast } = useToast();
   const [adminUser, setAdminUser] = useState<User | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [examsMap, setExamsMap] = useState<Record<string, Exam>>({});
+  const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -90,6 +95,26 @@ function SubmissionsContent() {
     }
   };
 
+  const handleDeleteSubmission = async () => {
+    if (!submissionToDelete) return;
+    try {
+      await deleteDoc(doc(db, 'submissions', submissionToDelete.id));
+      toast({
+        title: 'Success',
+        description: `Submission from "${submissionToDelete.userName}" has been deleted. They can now re-attempt the exam.`,
+      });
+      fetchSubmissions(); // Refresh the list
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to delete submission.',
+      });
+    } finally {
+      setSubmissionToDelete(null);
+    }
+  };
+
   if (!adminUser) {
      return (
         <div className="flex h-screen w-full items-center justify-center">
@@ -135,7 +160,10 @@ function SubmissionsContent() {
                             <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-32" /></TableCell>
                             <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
                             <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                            <TableCell className="text-right"><Skeleton className="h-8 w-8 rounded-md" /></TableCell>
+                            <TableCell className="text-right space-x-2">
+                                <Skeleton className="h-8 w-8 rounded-md" />
+                                <Skeleton className="h-8 w-8 rounded-md" />
+                            </TableCell>
                         </TableRow>
                     ))
                 ) : submissions.length > 0 ? (
@@ -165,13 +193,33 @@ function SubmissionsContent() {
                                 <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
                                     {sub.submittedAt ? formatDistanceToNow(sub.submittedAt.toDate(), { addSuffix: true }) : 'N/A'}
                                 </TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="text-right space-x-2">
                                     <Link href={`/admin/submissions/${sub.id}`}>
                                         <Button variant="outline" size="icon">
                                             <Eye className="h-4 w-4" />
                                             <span className="sr-only">View Details</span>
                                         </Button>
                                     </Link>
+                                     <AlertDialog open={!!submissionToDelete && submissionToDelete.id === sub.id} onOpenChange={(open) => !open && setSubmissionToDelete(null)}>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="destructive" size="icon" onClick={() => setSubmissionToDelete(sub)}>
+                                          <Trash2 className="h-4 w-4" />
+                                          <span className="sr-only">Delete Submission</span>
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            This action will permanently delete this submission. The user will be able to re-attempt the exam.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction onClick={handleDeleteSubmission}>Continue</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
                                 </TableCell>
                             </TableRow>
                         )
