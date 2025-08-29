@@ -36,6 +36,7 @@ export default function CreateCodingExamPage() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [passPercentage, setPassPercentage] = useState(50);
   const [allProblems, setAllProblems] = useState<CodingProblem[]>([]);
   const [selectedProblems, setSelectedProblems] = useState<CodingProblem[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -78,6 +79,7 @@ export default function CreateCodingExamPage() {
       await addDoc(collection(db, 'coding_exams'), {
         title,
         description,
+        passPercentage,
         problemIds: selectedProblems.map(p => p.id),
         problemTitles: selectedProblems.map(p => p.title),
         createdAt: new Date(),
@@ -121,9 +123,15 @@ export default function CreateCodingExamPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCreateExam} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="exam-title">Exam Title</Label>
-              <Input id="exam-title" value={title} onChange={e => setTitle(e.target.value)} required placeholder="e.g., Data Structures Final" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="exam-title">Exam Title</Label>
+                <Input id="exam-title" value={title} onChange={e => setTitle(e.target.value)} required placeholder="e.g., Data Structures Final" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pass-percentage">Pass Percentage (%)</Label>
+                <Input id="pass-percentage" type="number" min="0" max="100" value={passPercentage} onChange={e => setPassPercentage(Number(e.target.value))} required placeholder="e.g., 50" />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="exam-description">Description</Label>

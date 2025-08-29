@@ -35,6 +35,7 @@ export default function CreateCodingProblemPage() {
   const [language, setLanguage] = useState('');
   const [problemStatement, setProblemStatement] = useState('');
   const [pointsPerCase, setPointsPerCase] = useState(10);
+  const [passPercentage, setPassPercentage] = useState(50);
   const [publicTestCases, setPublicTestCases] = useState<TestCase[]>([{ input: '', output: '' }]);
   const [privateTestCases, setPrivateTestCases] = useState<TestCase[]>([{ input: '', output: '' }]);
 
@@ -105,6 +106,7 @@ export default function CreateCodingProblemPage() {
         language,
         problemStatement,
         pointsPerCase,
+        passPercentage,
         publicTestCases: finalPublicTestCases,
         privateTestCases: finalPrivateTestCases,
         createdAt: new Date(),
@@ -170,9 +172,15 @@ export default function CreateCodingProblemPage() {
               <Textarea id="problem-statement" name="problem-statement" value={problemStatement} onChange={e => setProblemStatement(e.target.value)} placeholder="Describe the coding challenge..." rows={10} required />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="points-per-case">Points Per Private Test Case</Label>
-              <Input id="points-per-case" name="points-per-case" type="number" value={pointsPerCase} onChange={e => setPointsPerCase(Number(e.target.value))} required placeholder="e.g., 10" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                <Label htmlFor="points-per-case">Points Per Private Test Case</Label>
+                <Input id="points-per-case" name="points-per-case" type="number" value={pointsPerCase} onChange={e => setPointsPerCase(Number(e.target.value))} required placeholder="e.g., 10" />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="pass-percentage">Pass Percentage (%)</Label>
+                    <Input id="pass-percentage" name="pass-percentage" type="number" min="0" max="100" value={passPercentage} onChange={e => setPassPercentage(Number(e.target.value))} required placeholder="e.g., 50" />
+                </div>
             </div>
 
             <div className="space-y-4">
