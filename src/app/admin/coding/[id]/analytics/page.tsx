@@ -9,7 +9,7 @@ import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firesto
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, CheckCircle, XCircle, BrainCircuit, Eye } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, BrainCircuit, Eye, Download, FileText, File } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
@@ -19,6 +19,10 @@ import { analyzeCodingProblem } from '@/ai/flows/analyze-coding-problem-flow';
 import type { CodingAnalysisInput, CodingAnalysisOutput } from '@/ai/schemas/coding-analysis-schemas';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import * as xlsx from 'xlsx';
+
 
 const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
 
@@ -191,6 +195,81 @@ export default function CodingProblemAnalyticsPage() {
             setIsGeneratingAIReport(false);
         }
     }
+
+    const downloadExcelReport = () => {
+        const wb = xlsx.utils.book_new();
+
+        // Test Case Analytics Sheet
+        const testCaseData = analytics.map(tc => ({
+            "Test Case": tc.name,
+            "Passed": tc.passed,
+            "Failed": tc.failed,
+            "Success Rate (%)": tc.passed + tc.failed > 0 ? Math.round((tc.passed / (tc.passed + tc.failed)) * 100) : 0,
+        }));
+        const wsTestCases = xlsx.utils.json_to_sheet(testCaseData);
+        xlsx.utils.book_append_sheet(wb, wsTestCases, "Test Case Analytics");
+
+        // Student Performance Sheet
+        const studentData = submissions.map(s => ({
+            "Student Name": s.userName,
+            "Email": s.userEmail,
+            "Score": s.score,
+        }));
+        const wsStudents = xlsx.utils.json_to_sheet(studentData);
+        xlsx.utils.book_append_sheet(wb, wsStudents, "Student Performance");
+
+        xlsx.writeFile(wb, `${problem?.title}_Analytics_Report.xlsx`);
+    }
+
+    const downloadPdfReport = () => {
+        const doc = new jsPDF();
+        const maxScore = (problem?.privateTestCases?.length || 0) * (problem?.pointsPerCase || 10);
+
+        // Title
+        doc.setFontSize(18);
+        doc.text(`Analytics Report for: ${problem?.title}`, 14, 22);
+
+        // AI Summary if available
+        if (aiAnalysis?.analysisSummary) {
+            doc.setFontSize(14);
+            doc.text("AI-Powered Analysis", 14, 40);
+            const splitText = doc.splitTextToSize(aiAnalysis.analysisSummary.replace(/(\*\*|#+\s*|`)/g, ''), 180);
+            doc.setFontSize(10);
+            doc.text(splitText, 14, 48);
+        }
+        
+        // --- PAGE 2: Test Case Performance ---
+        doc.addPage();
+        doc.setFontSize(18);
+        doc.text("Test Case Performance Analysis", 14, 22);
+        (doc as any).autoTable({
+            startY: 30,
+            head: [['Test Case', 'Passed', 'Failed', 'Success Rate']],
+            body: analytics.map(tc => [
+                tc.name, 
+                tc.passed, 
+                tc.failed, 
+                `${tc.passed + tc.failed > 0 ? Math.round((tc.passed / (tc.passed + tc.failed)) * 100) : 'N/A'}%`
+            ]),
+        });
+        
+        // --- PAGE 3: Student Performance ---
+        doc.addPage();
+        doc.setFontSize(18);
+        doc.text("Student Performance Analysis", 14, 22);
+         (doc as any).autoTable({
+            startY: 30,
+            head: [['Student Name', 'Email', 'Score', 'Percentage']],
+            body: submissions.map(s => [
+                s.userName,
+                s.userEmail,
+                s.score,
+                `${maxScore > 0 ? Math.round((s.score / maxScore) * 100) : 'N/A'}%`
+            ]),
+        });
+
+        doc.save(`${problem?.title}_Analytics_Report.pdf`);
+    };
     
     if (loading) {
         return (
@@ -211,6 +290,14 @@ export default function CodingProblemAnalyticsPage() {
                         Back to Problems List
                     </Button>
                 </Link>
+                 <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={downloadExcelReport} disabled={loading || analytics.length === 0}>
+                        <FileText className="mr-2 h-4 w-4" /> Download Excel
+                    </Button>
+                     <Button variant="outline" onClick={downloadPdfReport} disabled={loading || analytics.length === 0}>
+                        <File className="mr-2 h-4 w-4" /> Download PDF
+                    </Button>
+                </div>
             </div>
 
             <Card>
