@@ -28,6 +28,7 @@ import 'ace-builds/src-noconflict/mode-php';
 import 'ace-builds/src-noconflict/theme-monokai';
 import 'ace-builds/src-noconflict/theme-github';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useParams } from 'next/navigation';
 
 
 type EvaluationResult = {
@@ -70,13 +71,16 @@ async function getSubmissionDetails(submissionId: string) {
     return { id: submissionDoc.id, ...submissionDoc.data() } as CodingSubmission;
 }
 
-export default function SubmissionDetailPage({ params: { id } }: { params: { id: string } }) {
+export default function SubmissionDetailPage() {
+    const params = useParams();
+    const id = params.id as string;
     const [submission, setSubmission] = useState<CodingSubmission | null>(null);
     const [loading, setLoading] = useState(true);
     const { theme } = useTheme();
 
     useEffect(() => {
         const fetchDetails = async () => {
+            if (!id) return;
             setLoading(true);
             const details = await getSubmissionDetails(id);
             setSubmission(details);
