@@ -70,7 +70,7 @@ async function getSubmissionDetails(submissionId: string) {
     return { id: submissionDoc.id, ...submissionDoc.data() } as CodingSubmission;
 }
 
-export default function SubmissionDetailPage({ params }: { params: { id: string } }) {
+export default function SubmissionDetailPage({ params: { id } }: { params: { id: string } }) {
     const [submission, setSubmission] = useState<CodingSubmission | null>(null);
     const [loading, setLoading] = useState(true);
     const { theme } = useTheme();
@@ -78,12 +78,12 @@ export default function SubmissionDetailPage({ params }: { params: { id: string 
     useEffect(() => {
         const fetchDetails = async () => {
             setLoading(true);
-            const details = await getSubmissionDetails(params.id);
+            const details = await getSubmissionDetails(id);
             setSubmission(details);
             setLoading(false);
         };
         fetchDetails();
-    }, [params.id]);
+    }, [id]);
 
 
     if (loading) {
