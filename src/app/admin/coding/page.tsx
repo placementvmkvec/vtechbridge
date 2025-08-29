@@ -160,7 +160,7 @@ export default function AdminCodingProblemsPage() {
         <div>
           <h1 className="text-2xl font-bold">Coding Problems</h1>
           <p className="text-muted-foreground">
-            View, create, and manage all coding problems.
+            View, create, and manage all individual coding problems.
           </p>
         </div>
         <Link href="/admin/coding/new">
@@ -174,7 +174,7 @@ export default function AdminCodingProblemsPage() {
         <CardHeader>
           <CardTitle>All Problems</CardTitle>
           <CardDescription>
-            A list of all available coding challenges.
+            A list of all available coding challenges. These can be bundled into a Coding Exam.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -50,7 +50,7 @@ import {
   ChartLegendContent
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Pie, PieChart, Cell } from "recharts";
-import { ClipboardList, Users, CheckCircle, Upload, Trash2, Eye, BarChart2, Code, PlusCircle, X, Shield, Unlock } from "lucide-react";
+import { ClipboardList, Users, CheckCircle, Upload, Trash2, Eye, BarChart2, Code, PlusCircle, X, Shield, Unlock, FileCode } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -110,7 +110,7 @@ export default function AdminDashboardPage() {
   const [examFormRef, setExamFormRef] = useState<HTMLFormElement | null>(null);
 
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [stats, setStats] = useState({ totalExams: 0, totalUsers: 0, submissionsToday: 0, totalCodingProblems: 0 });
+  const [stats, setStats] = useState({ totalExams: 0, totalUsers: 0, submissionsToday: 0, totalCodingProblems: 0, totalCodingExams: 0 });
   const [chartData, setChartData] = useState<any[]>([]);
   const [pieChartData, setPieChartData] = useState<any[]>([]);
   const [examsMap, setExamsMap] = useState<Record<string, ExamData>>({});
@@ -150,6 +150,10 @@ export default function AdminDashboardPage() {
         // Fetch coding problems
         const codingProblemsSnapshot = await getDocs(collection(db, 'coding_problems'));
         const totalCodingProblems = codingProblemsSnapshot.size;
+        
+        // Fetch coding exams
+        const codingExamsSnapshot = await getDocs(collection(db, 'coding_exams'));
+        const totalCodingExams = codingExamsSnapshot.size;
 
         // Fetch users
         const usersSnapshot = await getDocs(collection(db, 'users'));
@@ -165,7 +169,7 @@ export default function AdminDashboardPage() {
         today.setHours(0, 0, 0, 0);
         const submissionsToday = fetchedSubmissions.filter(s => s.submittedAt && s.submittedAt.toDate() >= today).length;
 
-        setStats({ totalExams, totalUsers, submissionsToday, totalCodingProblems });
+        setStats({ totalExams, totalUsers, submissionsToday, totalCodingProblems, totalCodingExams });
         
         // Process chart data
         processChartData(fetchedSubmissions, examsDataMap);
@@ -351,7 +355,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 container mx-auto">
-        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-5">
           <Link href="/admin/exams">
             <Card className="shadow-sm hover:bg-muted/50 transition-colors">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -360,7 +364,19 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalExams}</div>
-                <p className="text-xs text-muted-foreground">Active MCQ exams available</p>
+                <p className="text-xs text-muted-foreground">Active MCQ exams</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/admin/coding-exams">
+            <Card className="shadow-sm hover:bg-muted/50 transition-colors">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Coding Exams</CardTitle>
+                <FileCode className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalCodingExams}</div>
+                <p className="text-xs text-muted-foreground">Active coding exams</p>
               </CardContent>
             </Card>
           </Link>
@@ -372,7 +388,7 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalCodingProblems}</div>
-                <p className="text-xs text-muted-foreground">Available coding challenges</p>
+                <p className="text-xs text-muted-foreground">Individual problems</p>
               </CardContent>
             </Card>
           </Link>
@@ -384,7 +400,7 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalUsers}</div>
-                <p className="text-xs text-muted-foreground">Registered users in the system</p>
+                <p className="text-xs text-muted-foreground">Registered users</p>
               </CardContent>
             </Card>
           </Link>
@@ -396,7 +412,7 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.submissionsToday}</div>
-                <p className="text-xs text-muted-foreground">Total tests submitted today</p>
+                <p className="text-xs text-muted-foreground">MCQ tests submitted today</p>
               </CardContent>
             </Card>
           </Link>

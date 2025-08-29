@@ -21,8 +21,13 @@ export function AdminNav() {
     },
     {
       href: "/admin/coding",
-      label: "Coding",
-      active: pathname.startsWith("/admin/coding"),
+      label: "Coding Problems",
+      active: pathname.startsWith("/admin/coding") && !pathname.startsWith("/admin/coding-exams") && !pathname.startsWith("/admin/coding-submissions"),
+    },
+    {
+      href: "/admin/coding-exams",
+      label: "Coding Exams",
+      active: pathname.startsWith("/admin/coding-exams"),
     },
     {
         href: "/admin/coding-submissions",
