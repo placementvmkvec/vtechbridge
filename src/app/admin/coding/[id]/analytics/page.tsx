@@ -28,6 +28,7 @@ type CodingProblem = {
     title: string;
     publicTestCases: TestCase[];
     privateTestCases: TestCase[];
+    pointsPerCase?: number;
 };
 
 type Submission = {
@@ -97,10 +98,10 @@ export default function CodingProblemAnalyticsPage() {
             const problemData = { id: problemDoc.id, ...problemDoc.data() } as CodingProblem;
             setProblem(problemData);
 
-            const submissionsQuery = query(collection(db, 'submissions'), where('problemId', '==', problemId));
+            const submissionsQuery = query(collection(db, 'coding_submissions'), where('problemId', '==', problemId));
             const submissionsSnapshot = await getDocs(submissionsQuery);
             const fetchedSubmissions = submissionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Submission[];
-            setSubmissions(fetchedSubmissions);
+            setSubmissions(fetchedSubmissions.sort((a,b) => b.score - a.score));
 
             if (fetchedSubmissions.length === 0) {
                 setLoading(false);
@@ -132,7 +133,7 @@ export default function CodingProblemAnalyticsPage() {
             setAnalytics(analyticsData);
 
              // Score Distribution
-            const maxScore = problemData.privateTestCases.length * (problemDoc.data()?.pointsPerCase || 10);
+            const maxScore = problemData.privateTestCases.length * (problemData.pointsPerCase || 10);
             const scoreRanges = Array.from({length: 10}, (_, i) => ({
                 range: `${i*10}-${i*10+10}%`,
                 count: 0,
