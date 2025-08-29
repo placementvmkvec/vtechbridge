@@ -9,7 +9,7 @@ import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firesto
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, CheckCircle, XCircle, BrainCircuit } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, BrainCircuit, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
@@ -17,6 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import Markdown from 'react-markdown';
 import { analyzeCodingProblem } from '@/ai/flows/analyze-coding-problem-flow';
 import type { CodingAnalysisInput, CodingAnalysisOutput } from '@/ai/schemas/coding-analysis-schemas';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
 
@@ -34,6 +36,7 @@ type CodingProblem = {
 type Submission = {
     id: string;
     userName: string;
+    userEmail: string;
     score: number;
     results: EvaluationResult[];
 };
@@ -293,45 +296,93 @@ export default function CodingProblemAnalyticsPage() {
                     </Card>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Detailed Test Case Breakdown</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Test Case</TableHead>
-                                    <TableHead className="text-center">Passed</TableHead>
-                                    <TableHead className="text-center">Failed</TableHead>
-                                    <TableHead className="text-center">Success Rate</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {analytics.map((tc) => (
-                                    <TableRow key={tc.name}>
-                                        <TableCell className="font-medium text-sm">{tc.name}</TableCell>
-                                        <TableCell className="text-center text-green-600 font-bold">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <CheckCircle className="h-4 w-4" /> 
-                                                <span>{tc.passed}</span>
-                                            </div>
-                                        </TableCell>
-                                         <TableCell className="text-center text-destructive font-bold">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <XCircle className="h-4 w-4" /> 
-                                                <span>{tc.failed}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center font-semibold">
-                                            {tc.passed + tc.failed > 0 ? `${Math.round((tc.passed / (tc.passed + tc.failed)) * 100)}%` : 'N/A'}
-                                        </TableCell>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Detailed Test Case Breakdown</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Test Case</TableHead>
+                                        <TableHead className="text-center">Passed</TableHead>
+                                        <TableHead className="text-center">Failed</TableHead>
+                                        <TableHead className="text-center">Success Rate</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                                </TableHeader>
+                                <TableBody>
+                                    {analytics.map((tc) => (
+                                        <TableRow key={tc.name}>
+                                            <TableCell className="font-medium text-sm">{tc.name}</TableCell>
+                                            <TableCell className="text-center text-green-600 font-bold">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <CheckCircle className="h-4 w-4" /> 
+                                                    <span>{tc.passed}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center text-destructive font-bold">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <XCircle className="h-4 w-4" /> 
+                                                    <span>{tc.failed}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center font-semibold">
+                                                {tc.passed + tc.failed > 0 ? `${Math.round((tc.passed / (tc.passed + tc.failed)) * 100)}%` : 'N/A'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Student Performance</CardTitle>
+                             <CardDescription>List of all students who submitted a solution, sorted by score.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Student</TableHead>
+                                        <TableHead className="text-center">Score</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {submissions.map((sub) => (
+                                        <TableRow key={sub.id}>
+                                            <TableCell>
+                                                 <div className="flex items-center gap-3">
+                                                    <Avatar className="h-9 w-9 border">
+                                                        <AvatarImage src={`https://placehold.co/100x100.png`} alt={sub.userName} data-ai-hint="user avatar" />
+                                                        <AvatarFallback>{sub.userName?.charAt(0) ?? 'U'}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div>
+                                                        <p className="font-medium">{sub.userName}</p>
+                                                        <p className="text-xs text-muted-foreground">{sub.userEmail}</p>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center font-semibold">
+                                                <Badge variant={sub.score > 0 ? 'default' : 'destructive'}>{sub.score}</Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Link href={`/admin/coding-submissions/${sub.id}`}>
+                                                     <Button variant="outline" size="icon">
+                                                        <Eye className="h-4 w-4" />
+                                                        <span className="sr-only">View Submission</span>
+                                                    </Button>
+                                                </Link>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </div>
                 </>
             )}
         </div>

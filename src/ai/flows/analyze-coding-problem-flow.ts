@@ -33,7 +33,7 @@ const prompt = ai.definePrompt({
     {{/each}}
 
     Based on this data, please provide a comprehensive analysis. Your analysis should include:
-    1.  An overall summary of the performance. Calculate the average score and overall pass rate of submissions.
+    1.  An overall summary of the performance. Calculate the average score and overall pass rate of submissions (consider a submission "passed" if it scores more than 0 points).
     2.  Identification of the top 3 most difficult test cases (those with the highest number of failures).
     3.  A brief analysis of WHY these test cases might be failing. Consider edge cases, data types, performance, etc.
     4.  Any notable patterns or insights (e.g., are many students failing the same private test cases? Does this point to a specific misunderstanding of the problem?).
