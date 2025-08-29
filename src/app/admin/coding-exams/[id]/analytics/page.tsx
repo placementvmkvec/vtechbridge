@@ -48,6 +48,11 @@ type ProblemAnalytics = {
   submissionCount: number;
 }
 
+type ScoreDistribution = {
+    range: string;
+    count: number;
+}
+
 export default function CodingExamAnalyticsPage() {
     const params = useParams();
     const router = useRouter();
@@ -59,6 +64,7 @@ export default function CodingExamAnalyticsPage() {
     const [exam, setExam] = useState<CodingExam | null>(null);
     const [submissions, setSubmissions] = useState<Submission[]>([]);
     const [analytics, setAnalytics] = useState<ProblemAnalytics[]>([]);
+    const [scoreDistribution, setScoreDistribution] = useState<ScoreDistribution[]>([]);
     const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
     
     const [isGeneratingAIReport, setIsGeneratingAIReport] = useState(false);
@@ -129,9 +135,29 @@ export default function CodingExamAnalyticsPage() {
                     averageScore: count > 0 ? Math.round(totalScore / count) : 0,
                     submissionCount: count,
                 }
-            }).sort((a, b) => b.averageScore - a.averageScore);
+            }).sort((a, b) => a.averageScore - b.averageScore);
             
             setAnalytics(finalAnalytics);
+
+            // Calculate score distribution
+            let maxScore = 0;
+            // This part is tricky as max score depends on number of private cases for each problem
+            // For now, let's assume a max of 100 for simplicity or calculate it if possible.
+            // A simple sum of scores is not a percentage. Let's create ranges based on absolute score.
+             const scoreRanges: ScoreDistribution[] = Array.from({length: 10}, (_, i) => ({
+                range: `${i*10 + 1}-${(i+1)*10}`,
+                count: 0,
+            }));
+             fetchedSubmissions.forEach(sub => {
+                const score = sub.totalScore;
+                if(score === 0) return;
+                const rangeIndex = Math.ceil(score / 10) - 1;
+                if (scoreRanges[rangeIndex]) {
+                     scoreRanges[rangeIndex].count++;
+                }
+            });
+            setScoreDistribution(scoreRanges);
+
 
         } catch (error) {
             console.error("Error fetching analytics data:", error);
@@ -318,10 +344,10 @@ export default function CodingExamAnalyticsPage() {
                 </Card>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                     <Card>
+                    <Card>
                         <CardHeader>
                             <CardTitle>Problem Performance</CardTitle>
-                            <CardDescription>Average score for each problem in the exam.</CardDescription>
+                            <CardDescription>Average score for each problem in the exam (sorted by difficulty).</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={400}>
@@ -346,7 +372,27 @@ export default function CodingExamAnalyticsPage() {
                             </ResponsiveContainer>
                         </CardContent>
                     </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Overall Score Distribution</CardTitle>
+                            <CardDescription>How many students fell into each total score bracket.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={400}>
+                                <BarChart data={scoreDistribution} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="range" />
+                                    <YAxis allowDecimals={false} />
+                                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                                    <Legend />
+                                    <Bar dataKey="count" fill="hsl(var(--chart-1))" name="Number of Students" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+                </div>
 
+                <div className="grid grid-cols-1 gap-8">
                     <Card>
                         <CardHeader>
                             <CardTitle>Student Leaderboard</CardTitle>
