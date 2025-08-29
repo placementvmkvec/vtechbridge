@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Clock, FileText, ArrowRight, CheckCircle, Code } from "lucide-react";
+import { Clock, FileText, ArrowRight, CheckCircle, Code, FileCode } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,10 +34,19 @@ type CodingProblem = {
   problemStatement: string;
 }
 
+type CodingExam = {
+  id: string;
+  title: string;
+  description: string;
+  problemIds: string[];
+}
+
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [exams, setExams] = useState<Exam[]>([]);
   const [codingProblems, setCodingProblems] = useState<CodingProblem[]>([]);
+  const [codingExams, setCodingExams] = useState<CodingExam[]>([]);
   const [completedExams, setCompletedExams] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
@@ -73,6 +82,15 @@ export default function DashboardPage() {
         ...doc.data()
       })) as CodingProblem[];
       setCodingProblems(fetchedCodingProblems);
+      
+      // Fetch all coding exams
+      const codingExamsCollectionRef = collection(db, 'coding_exams');
+      const codingExamsSnapshot = await getDocs(codingExamsCollectionRef);
+      const fetchedCodingExams = codingExamsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as CodingExam[];
+      setCodingExams(fetchedCodingExams);
 
       // Fetch user's submissions to check for completed exams
       const submissionsQuery = query(collection(db, "submissions"), where("userId", "==", userId));
@@ -118,7 +136,7 @@ export default function DashboardPage() {
                     </CardFooter>
                 </Card>
              ))
-          ) : exams.length > 0 || codingProblems.length > 0 ? (
+          ) : exams.length > 0 || codingProblems.length > 0 || codingExams.length > 0 ? (
             <>
             {exams.map((exam) => {
               const isCompleted = completedExams.has(exam.id);
@@ -173,6 +191,52 @@ export default function DashboardPage() {
                 </div>
               )
             })}
+             {codingExams.map((exam) => (
+                <div key={exam.id} className="flip-card h-[280px]">
+                  <div className="flip-card-inner">
+                    <div className="flip-card-front">
+                       <Card className="flex flex-col h-full shadow-lg border-transparent hover:border-primary transition-colors">
+                        <CardHeader>
+                          <CardTitle className="font-headline text-xl flex items-center justify-between">
+                            {exam.title}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex-grow space-y-4">
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <FileCode className="mr-2 h-4 w-4" />
+                            <span>{exam.problemIds.length} Problems</span>
+                          </div>
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <Code className="mr-2 h-4 w-4" />
+                            <span>Coding Exam</span>
+                          </div>
+                        </CardContent>
+                        <CardFooter>
+                           <div className="text-sm text-primary font-semibold">
+                               Hover to see details & start
+                            </div>
+                        </CardFooter>
+                      </Card>
+                    </div>
+                    <div className="flip-card-back">
+                      <Card className="flex flex-col h-full bg-card shadow-lg border-primary">
+                          <CardHeader>
+                            <CardTitle className="font-headline text-xl">{exam.title}</CardTitle>
+                             <CardDescription className="line-clamp-3">{exam.description}</CardDescription>
+                          </CardHeader>
+                          <CardContent className="flex-grow" />
+                          <CardFooter>
+                            <Link href={`/coding-exam/${exam.id}`} className="w-full">
+                              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105">
+                                Start Exam <ArrowRight className="ml-2 h-4 w-4" />
+                              </Button>
+                            </Link>
+                          </CardFooter>
+                        </Card>
+                    </div>
+                  </div>
+                </div>
+              ))}
              {codingProblems.map((problem) => (
                 <div key={problem.id} className="flip-card h-[280px]">
                   <div className="flip-card-inner">

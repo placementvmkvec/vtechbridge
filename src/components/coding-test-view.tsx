@@ -37,6 +37,8 @@ import { useToast } from '@/hooks/use-toast';
 
 type Props = {
   problem: CodingProblem;
+  isExamMode?: boolean;
+  onExamSubmit?: (problemId: string, submissionData: any) => void;
 };
 
 const languageVersionMap: Record<string, string> = {
@@ -86,7 +88,7 @@ type CustomRunResult = {
 }
 
 
-export function CodingTestView({ problem }: Props) {
+export function CodingTestView({ problem, isExamMode = false, onExamSubmit }: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
@@ -182,6 +184,16 @@ export function CodingTestView({ problem }: Props) {
     
     setEvaluationResults(results);
     setIsRunning(false);
+
+    if (isExamMode && onExamSubmit) {
+         const passedPrivateCount = results.filter((r) => !r.isPublic && r.passed).length;
+         const finalScore = passedPrivateCount * problem.pointsPerCase;
+         onExamSubmit(problem.id, { 
+            score: finalScore,
+            results,
+            problemTitle: problem.title
+        });
+    }
   }
 
 
@@ -237,21 +249,25 @@ export function CodingTestView({ problem }: Props) {
 
   const isLoading = isRunning || isCustomRunning;
 
+  const header = isExamMode ? null : (
+     <header className="flex justify-between items-center bg-background p-4 rounded-lg shadow-sm">
+        <h1 className="text-xl font-bold font-headline">{problem.title}</h1>
+        <div className="flex items-center gap-2">
+                <Button onClick={handleRunCode} disabled={isLoading || isSubmitting} variant="secondary">
+                {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                {isRunning ? 'Running...' : 'Run Code'}
+            </Button>
+            <Button onClick={handleSubmit} disabled={isLoading || evaluationResults.length === 0 || isSubmitting}>
+                {isSubmitting ? 'Submitting...' : <Shield className="mr-2 h-4 w-4" />}
+                {isSubmitting ? (totalScore !== null ? `Score: ${totalScore}` : 'Submitting...') : 'Submit Final Code'}
+            </Button>
+        </div>
+    </header>
+  );
+
   return (
     <div className="flex flex-col p-4 gap-4 bg-secondary">
-        <header className="flex justify-between items-center bg-background p-4 rounded-lg shadow-sm">
-            <h1 className="text-xl font-bold font-headline">{problem.title}</h1>
-            <div className="flex items-center gap-2">
-                 <Button onClick={handleRunCode} disabled={isLoading || isSubmitting} variant="secondary">
-                    {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                    {isRunning ? 'Running...' : 'Run Code'}
-                </Button>
-                <Button onClick={handleSubmit} disabled={isLoading || evaluationResults.length === 0 || isSubmitting}>
-                    {isSubmitting ? 'Submitting...' : <Shield className="mr-2 h-4 w-4" />}
-                    {isSubmitting ? (totalScore !== null ? `Score: ${totalScore}` : 'Submitting...') : 'Submit Final Code'}
-                </Button>
-            </div>
-        </header>
+       {header}
 
          <div className="grid grid-cols-1 gap-4">
             <Card>
@@ -322,10 +338,18 @@ export function CodingTestView({ problem }: Props) {
             <Card>
                 <Tabs defaultValue="results" className="w-full">
                         <CardHeader>
-                          <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="results">Test Results</TabsTrigger>
-                            <TabsTrigger value="custom">Custom Input</TabsTrigger>
-                          </TabsList>
+                            <div className="flex justify-between items-center">
+                                <TabsList className="grid w-fit grid-cols-2">
+                                    <TabsTrigger value="results">Test Results</TabsTrigger>
+                                    <TabsTrigger value="custom">Custom Input</TabsTrigger>
+                                </TabsList>
+                                 {isExamMode && (
+                                    <Button onClick={handleRunCode} disabled={isLoading || isSubmitting}>
+                                        {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                                        {isRunning ? 'Evaluating...' : 'Run & Save Progress'}
+                                    </Button>
+                                )}
+                            </div>
                         </CardHeader>
                     <CardContent className="h-[40vh]">
                         <TabsContent value="results" className="h-full">
