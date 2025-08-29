@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, getDocs, query, orderBy, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, deleteDoc, doc, Timestamp, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,10 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
-import { Trash2, Edit, PlusCircle, BarChart2, Eye } from 'lucide-react';
+import { Trash2, PlusCircle, BarChart2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const ADMIN_EMAIL = 'loganathans@vmkvec.edu.in';
 
@@ -24,6 +26,7 @@ type CodingExam = {
   description: string;
   problemIds: string[];
   createdAt: Timestamp;
+  isVisible: boolean;
 };
 
 export default function AdminCodingExamsPage() {
@@ -70,6 +73,35 @@ export default function AdminCodingExamsPage() {
     }
   };
 
+  const handleVisibilityChange = async (examId: string, isVisible: boolean) => {
+    try {
+      const examDocRef = doc(db, 'coding_exams', examId);
+      await updateDoc(examDocRef, { isVisible });
+      setExams(prevExams => 
+        prevExams.map(exam => 
+          exam.id === examId ? { ...exam, isVisible } : exam
+        )
+      );
+      toast({
+        title: 'Success',
+        description: `Exam visibility updated.`,
+      });
+    } catch (error) {
+      console.error('Error updating exam visibility:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to update visibility.',
+      });
+      // Revert UI on error
+      setExams(prevExams => 
+        prevExams.map(exam => 
+          exam.id === examId ? { ...exam, isVisible: !isVisible } : exam
+        )
+      );
+    }
+  };
+
   const handleDeleteExam = async () => {
     if (!examToDelete) return;
     try {
@@ -110,6 +142,7 @@ export default function AdminCodingExamsPage() {
               <TableRow>
                 <TableHead>Exam Title</TableHead>
                 <TableHead>Problems</TableHead>
+                <TableHead>Visible to Users</TableHead>
                 <TableHead className="hidden md:table-cell">Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -120,6 +153,7 @@ export default function AdminCodingExamsPage() {
                   <TableRow key={index}>
                     <TableCell><Skeleton className="h-4 w-48" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-12" /></TableCell>
                     <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-8 w-24" /></TableCell>
                   </TableRow>
@@ -129,6 +163,16 @@ export default function AdminCodingExamsPage() {
                   <TableRow key={exam.id}>
                     <TableCell className="font-medium">{exam.title}</TableCell>
                     <TableCell>{exam.problemIds.length}</TableCell>
+                     <TableCell>
+                       <div className="flex items-center space-x-2">
+                        <Switch
+                          id={`visibility-${exam.id}`}
+                          checked={exam.isVisible}
+                          onCheckedChange={(checked) => handleVisibilityChange(exam.id, checked)}
+                        />
+                        <Label htmlFor={`visibility-${exam.id}`} className="sr-only">Toggle exam visibility</Label>
+                      </div>
+                    </TableCell>
                     <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                       {exam.createdAt ? formatDistanceToNow(exam.createdAt.toDate(), { addSuffix: true }) : 'N/A'}
                     </TableCell>
@@ -161,7 +205,7 @@ export default function AdminCodingExamsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">No coding exams created yet.</TableCell>
+                  <TableCell colSpan={5} className="h-24 text-center">No coding exams created yet.</TableCell>
                 </TableRow>
               )}
             </TableBody>

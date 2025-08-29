@@ -6,7 +6,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, setDoc, collection, getDocs, query, orderBy, Timestamp, deleteDoc, addDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, getDocs, query, orderBy, Timestamp, deleteDoc, addDoc, updateDoc } from 'firebase/firestore';
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -307,6 +307,7 @@ export default function AdminDashboardPage() {
             questionCount: questionsPerSet, // Now it's questions per set
             questionSets: questionSets,
             createdAt: new Date(),
+            isVisible: true, // Default to visible
         });
         
         toast({ title: 'Success!', description: `Successfully created exam with ${numSets} sets of ${questionsPerSet} questions.` });

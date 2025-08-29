@@ -25,6 +25,7 @@ type Exam = {
   description: string;
   questionCount: number;
   duration: number;
+  isVisible: boolean;
 };
 
 type CodingProblem = {
@@ -39,6 +40,7 @@ type CodingExam = {
   title: string;
   description: string;
   problemIds: string[];
+  isVisible: boolean;
 }
 
 
@@ -65,18 +67,18 @@ export default function DashboardPage() {
   const fetchAssessments = async (userId: string) => {
     setLoading(true);
     try {
-      // Fetch all MCQ exams
-      const examsCollectionRef = collection(db, 'exams');
-      const examsSnapshot = await getDocs(examsCollectionRef);
+      // Fetch all visible MCQ exams
+      const examsQuery = query(collection(db, 'exams'), where("isVisible", "==", true));
+      const examsSnapshot = await getDocs(examsQuery);
       const fetchedExams = examsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Exam[];
       setExams(fetchedExams);
       
-      // Fetch all coding exams
-      const codingExamsCollectionRef = collection(db, 'coding_exams');
-      const codingExamsSnapshot = await getDocs(codingExamsCollectionRef);
+      // Fetch all visible coding exams
+      const codingExamsQuery = query(collection(db, 'coding_exams'), where("isVisible", "==", true));
+      const codingExamsSnapshot = await getDocs(codingExamsQuery);
       const fetchedCodingExams = codingExamsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()

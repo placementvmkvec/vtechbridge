@@ -11,6 +11,7 @@ import {
   deleteDoc,
   doc,
   Timestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -46,6 +47,8 @@ import { BarChart2, Eye, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const ADMIN_EMAIL = 'loganathans@vmkvec.edu.in';
 
@@ -55,6 +58,7 @@ type ExamData = {
   title: string;
   questionCount: number;
   createdAt: Timestamp;
+  isVisible: boolean;
 };
 
 export default function AdminExamsPage() {
@@ -112,6 +116,35 @@ export default function AdminExamsPage() {
     }
   };
 
+  const handleVisibilityChange = async (examId: string, isVisible: boolean) => {
+    try {
+      const examDocRef = doc(db, 'exams', examId);
+      await updateDoc(examDocRef, { isVisible });
+      setExams(prevExams => 
+        prevExams.map(exam => 
+          exam.id === examId ? { ...exam, isVisible } : exam
+        )
+      );
+      toast({
+        title: 'Success',
+        description: `Exam visibility updated.`,
+      });
+    } catch (error) {
+      console.error('Error updating exam visibility:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to update visibility.',
+      });
+       // Revert UI on error
+      setExams(prevExams => 
+        prevExams.map(exam => 
+          exam.id === examId ? { ...exam, isVisible: !isVisible } : exam
+        )
+      );
+    }
+  };
+
   const handleDeleteExam = async () => {
     if (!examToDelete) return;
 
@@ -158,6 +191,7 @@ export default function AdminExamsPage() {
                 <TableHead>Exam Title</TableHead>
                 <TableHead>Questions</TableHead>
                 <TableHead>Pass %</TableHead>
+                <TableHead>Visible to Users</TableHead>
                 <TableHead className="hidden md:table-cell">Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -175,6 +209,9 @@ export default function AdminExamsPage() {
                     <TableCell>
                       <Skeleton className="h-4 w-12" />
                     </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-6 w-12" />
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <Skeleton className="h-4 w-24" />
                     </TableCell>
@@ -189,6 +226,16 @@ export default function AdminExamsPage() {
                     <TableCell className="font-medium">{exam.title}</TableCell>
                     <TableCell>{exam.questionCount}</TableCell>
                     <TableCell>{exam.passPercentage}%</TableCell>
+                    <TableCell>
+                       <div className="flex items-center space-x-2">
+                        <Switch
+                          id={`visibility-${exam.id}`}
+                          checked={exam.isVisible}
+                          onCheckedChange={(checked) => handleVisibilityChange(exam.id, checked)}
+                        />
+                        <Label htmlFor={`visibility-${exam.id}`} className="sr-only">Toggle exam visibility</Label>
+                      </div>
+                    </TableCell>
                     <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                       {exam.createdAt
                         ? formatDistanceToNow(exam.createdAt.toDate(), {
@@ -250,7 +297,7 @@ export default function AdminExamsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No exams have been created yet.
                   </TableCell>
                 </TableRow>

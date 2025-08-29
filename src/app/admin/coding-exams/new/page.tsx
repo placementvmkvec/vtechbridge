@@ -81,6 +81,7 @@ export default function CreateCodingExamPage() {
         problemIds: selectedProblems.map(p => p.id),
         problemTitles: selectedProblems.map(p => p.title),
         createdAt: new Date(),
+        isVisible: true, // Default to visible
       });
       toast({ title: 'Success!', description: `Successfully created coding exam: "${title}"` });
       router.push('/admin/coding-exams');
