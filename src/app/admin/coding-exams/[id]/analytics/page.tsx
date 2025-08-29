@@ -9,13 +9,19 @@ import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firesto
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, BrainCircuit, File, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import * as xlsx from 'xlsx';
+import Markdown from 'react-markdown';
+import { analyzeCodingExam } from '@/ai/flows/analyze-coding-exam-flow';
+import type { CodingExamAnalysisInput, CodingExamAnalysisOutput } from '@/ai/schemas/coding-exam-analysis-schemas';
 
 const ADMIN_EMAIL = "loganathans@vmkvec.edu.in";
 
@@ -52,6 +58,9 @@ export default function CodingExamAnalyticsPage() {
     const [submissions, setSubmissions] = useState<Submission[]>([]);
     const [analytics, setAnalytics] = useState<ProblemAnalytics[]>([]);
     
+    const [isGeneratingAIReport, setIsGeneratingAIReport] = useState(false);
+    const [aiAnalysis, setAiAnalysis] = useState<CodingExamAnalysisOutput | null>(null);
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             if (currentUser && currentUser.email === ADMIN_EMAIL) {
@@ -117,7 +126,7 @@ export default function CodingExamAnalyticsPage() {
                     averageScore: count > 0 ? Math.round(totalScore / count) : 0,
                     submissionCount: count,
                 }
-            });
+            }).sort((a, b) => b.averageScore - a.averageScore);
             
             setAnalytics(finalAnalytics);
 
@@ -127,6 +136,94 @@ export default function CodingExamAnalyticsPage() {
         } finally {
             setLoading(false);
         }
+    };
+    
+    const handleGenerateAIReport = async () => {
+        if (!exam || submissions.length === 0 || analytics.length === 0) {
+            toast({ variant: 'destructive', title: "Not enough data", description: "Cannot generate a report without submissions."});
+            return;
+        }
+        setIsGeneratingAIReport(true);
+        try {
+            const analysisInput: CodingExamAnalysisInput = {
+                examTitle: exam.title,
+                problemAnalytics: analytics,
+                studentPerformances: submissions.map(s => ({
+                    userName: s.userName,
+                    totalScore: s.totalScore,
+                })),
+            };
+            const result = await analyzeCodingExam(analysisInput);
+            setAiAnalysis(result);
+        } catch(error) {
+            console.error("AI Analysis failed:", error);
+            toast({ variant: 'destructive', title: "AI Analysis Failed", description: "There was an error generating the AI report."});
+        } finally {
+            setIsGeneratingAIReport(false);
+        }
+    }
+    
+    const downloadExcelReport = () => {
+        const wb = xlsx.utils.book_new();
+
+        // Problem Analytics Sheet
+        const problemData = analytics.map(p => ({
+            "Problem Title": p.title,
+            "Average Score": p.averageScore,
+            "Submission Count": p.submissionCount,
+        }));
+        const wsProblems = xlsx.utils.json_to_sheet(problemData);
+        xlsx.utils.book_append_sheet(wb, wsProblems, "Problem Analytics");
+
+        // Student Performance Sheet
+        const studentData = submissions.map(s => ({
+            "Student Name": s.userName,
+            "Email": s.userEmail,
+            "Total Score": s.totalScore,
+        }));
+        const wsStudents = xlsx.utils.json_to_sheet(studentData);
+        xlsx.utils.book_append_sheet(wb, wsStudents, "Student Performance");
+
+        xlsx.writeFile(wb, `${exam?.title}_Analytics_Report.xlsx`);
+    }
+
+    const downloadPdfReport = () => {
+        const doc = new jsPDF();
+
+        // Title
+        doc.setFontSize(18);
+        doc.text(`Analytics Report for: ${exam?.title}`, 14, 22);
+
+        // AI Summary if available
+        if (aiAnalysis?.analysisSummary) {
+            doc.setFontSize(14);
+            doc.text("AI-Powered Analysis", 14, 40);
+            const splitText = doc.splitTextToSize(aiAnalysis.analysisSummary.replace(/(\*\*|#+\s*|`)/g, ''), 180);
+            doc.setFontSize(10);
+            doc.text(splitText, 14, 48);
+        }
+        
+        // --- PAGE 2: Problem Performance ---
+        doc.addPage();
+        doc.setFontSize(18);
+        doc.text("Problem Performance Analysis", 14, 22);
+        (doc as any).autoTable({
+            startY: 30,
+            head: [['Problem', 'Average Score', 'Submissions']],
+            body: analytics.map(p => [ p.title, p.averageScore, p.submissionCount ]),
+        });
+        
+        // --- PAGE 3: Student Leaderboard ---
+        doc.addPage();
+        doc.setFontSize(18);
+        doc.text("Student Leaderboard", 14, 22);
+         (doc as any).autoTable({
+            startY: 30,
+            head: [['Student Name', 'Email', 'Total Score']],
+            body: submissions.map(s => [ s.userName, s.userEmail, s.totalScore ]),
+        });
+
+        doc.save(`${exam?.title}_Analytics_Report.pdf`);
     };
     
     if (loading) {
@@ -148,6 +245,14 @@ export default function CodingExamAnalyticsPage() {
                         Back to Exams List
                     </Button>
                 </Link>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={downloadExcelReport} disabled={submissions.length === 0}>
+                        <FileText className="mr-2 h-4 w-4" /> Download Excel
+                    </Button>
+                     <Button variant="outline" onClick={downloadPdfReport} disabled={submissions.length === 0}>
+                        <File className="mr-2 h-4 w-4" /> Download PDF
+                    </Button>
+                </div>
             </div>
 
             <Card>
@@ -166,6 +271,29 @@ export default function CodingExamAnalyticsPage() {
                     </CardContent>
                 </Card>
             ) : (
+                <>
+                <Card>
+                    <CardHeader className="flex flex-row justify-between items-start">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <BrainCircuit className="h-6 w-6 text-primary" />
+                                AI-Powered Analysis
+                            </CardTitle>
+                            <CardDescription>An intelligent summary of this exam's performance.</CardDescription>
+                        </div>
+                        <Button onClick={handleGenerateAIReport} disabled={isGeneratingAIReport}>
+                            {isGeneratingAIReport ? 'Generating...' : 'Generate AI Report'}
+                        </Button>
+                    </CardHeader>
+                    {aiAnalysis && (
+                        <CardContent>
+                             <div className="prose prose-sm dark:prose-invert max-w-full bg-secondary p-4 rounded-lg">
+                                <Markdown>{aiAnalysis.analysisSummary}</Markdown>
+                            </div>
+                        </CardContent>
+                    )}
+                </Card>
+                
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                      <Card>
                         <CardHeader>
@@ -234,6 +362,7 @@ export default function CodingExamAnalyticsPage() {
                         </CardContent>
                     </Card>
                 </div>
+                </>
             )}
         </div>
     );
