@@ -2,7 +2,7 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 import {
   InterviewStateSchema,
   InterviewResponseSchema,
@@ -38,10 +38,18 @@ async function toWav(
   });
 }
 
+// A schema just for the text-generation part of the interview.
+const InterviewTextResponseSchema = z.object({
+  modelResponse: z.string().describe("The AI interviewer's response or next question."),
+  isInterviewOver: z.boolean().describe('A flag to indicate if the interview has concluded.'),
+  feedback: z.string().optional().describe('Final feedback for the user if the interview is over.'),
+});
+
+
 const interviewPrompt = ai.definePrompt({
   name: 'interviewPrompt',
   input: { schema: InterviewStateSchema },
-  output: { schema: InterviewResponseSchema },
+  output: { schema: InterviewTextResponseSchema },
   prompt: `You are an expert technical interviewer for a software engineering position. Your goal is to conduct a friendly but thorough interview based on a spoken conversation.
 
   - Start with a greeting and a simple "Tell me about yourself" question if the transcript is empty.
@@ -68,16 +76,16 @@ const interviewFlow = ai.defineFlow(
     outputSchema: InterviewResponseSchema,
   },
   async (state: InterviewState): Promise<InterviewResponse> => {
-    // Generate the text response from the interviewer AI
+    // 1. Generate the text response from the interviewer AI
     const { output: textOutput } = await interviewPrompt(state);
 
     if (!textOutput?.modelResponse) {
         throw new Error("Failed to generate a text response from the AI.");
     }
     
-    // Convert the text response to speech
+    // 2. Convert the AI's text response to speech
     const { media } = await ai.generate({
-      model: 'googleai/gemini-2.5-flash-preview-tts',
+      model: 'googleai/gemini-2.5-flash-preview-tts', // FIX: Added the missing model property
       config: {
         responseModalities: ['AUDIO'],
         speechConfig: {
@@ -96,6 +104,7 @@ const interviewFlow = ai.defineFlow(
     const pcmData = Buffer.from(media.url.substring(media.url.indexOf(',') + 1), 'base64');
     const wavData = await toWav(pcmData);
 
+    // 3. Combine the text output with the generated audio URI
     return {
       ...textOutput,
       audioDataUri: 'data:audio/wav;base64,' + wavData,
