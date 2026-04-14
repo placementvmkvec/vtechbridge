@@ -2,6 +2,7 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/googleai';
 import { z } from 'zod';
 import {
   InterviewStateSchema,
@@ -85,7 +86,7 @@ const interviewFlow = ai.defineFlow(
     
     // 2. Convert the AI's text response to speech
     const { media } = await ai.generate({
-      model: 'googleai/gemini-2.5-flash-preview-tts', // FIX: Added the missing model property
+      model: googleAI.model('gemini-2.5-flash-preview-tts'),
       config: {
         responseModalities: ['AUDIO'],
         speechConfig: {
