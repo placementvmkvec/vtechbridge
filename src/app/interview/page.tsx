@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -26,9 +25,15 @@ export default function InterviewPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const interviewStartedRef = useRef(false);
 
   // Start the interview when the component mounts
   useEffect(() => {
+    if (interviewStartedRef.current) {
+      return;
+    }
+    interviewStartedRef.current = true;
+
     const startInterview = async () => {
       setIsAIProcessing(true);
       try {
