@@ -203,7 +203,7 @@ export default function InterviewPage() {
                 <p className="absolute top-2 left-2 text-white text-sm font-bold bg-black/50 px-2 py-1 rounded-md">AI Interviewer</p>
                 
                 {/* User Preview Overlay */}
-                <div className="absolute bottom-4 right-4 w-[35%] z-10">
+                <div className="absolute bottom-4 right-4 w-2/5 z-10">
                     <video ref={videoRef} className="w-full aspect-[4/3] rounded-md bg-background shadow-md object-cover" autoPlay muted playsInline />
                     {!hasCameraPermission && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-md">
