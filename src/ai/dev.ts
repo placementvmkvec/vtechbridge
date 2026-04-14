@@ -2,3 +2,4 @@
 import './flows/analyze-exam-flow';
 import './flows/analyze-coding-problem-flow';
 import './flows/analyze-coding-exam-flow';
+import './flows/interview-flow';

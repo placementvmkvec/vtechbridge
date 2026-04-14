@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Clock, FileText, ArrowRight, CheckCircle, Code, FileCode } from "lucide-react";
+import { Clock, FileText, ArrowRight, CheckCircle, Code, FileCode, Bot } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -166,6 +166,46 @@ export default function DashboardPage() {
              ))
           ) : exams.length > 0 || codingProblems.length > 0 || codingExams.length > 0 ? (
             <>
+            <div className={`flip-card h-[280px]`}>
+              <div className="flip-card-inner">
+                <div className="flip-card-front">
+                    <Card className="flex flex-col h-full shadow-lg border-transparent hover:border-primary transition-colors relative">
+                    <CardHeader>
+                      <CardTitle className="font-headline text-xl flex items-center justify-between">
+                        AI Mock Interview
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-grow space-y-4">
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Bot className="mr-2 h-4 w-4" />
+                        <span>Practice your communication skills.</span>
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                        <div className="text-sm text-primary font-semibold">
+                            Hover to start your interview practice.
+                        </div>
+                    </CardFooter>
+                  </Card>
+                </div>
+                <div className="flip-card-back">
+                  <Card className="flex flex-col h-full bg-card shadow-lg border-primary">
+                      <CardHeader>
+                        <CardTitle className="font-headline text-xl">AI Mock Interview</CardTitle>
+                          <CardDescription className="line-clamp-3">Engage in a simulated technical interview with an AI. Get ready for your next job opportunity.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="flex-grow" />
+                      <CardFooter>
+                        <Link href={`/interview`} className="w-full">
+                          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-transform transform hover:scale-105">
+                            Start Interview <ArrowRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </CardFooter>
+                    </Card>
+                </div>
+              </div>
+            </div>
             {exams.map((exam) => {
               const isCompleted = completedExams.has(exam.id);
               return (
