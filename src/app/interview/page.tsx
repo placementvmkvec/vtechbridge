@@ -113,11 +113,11 @@ export default function InterviewPage() {
     
     try {
         const interviewState: InterviewState = {
-            transcript: currentTranscriptWithUser,
+            transcript: transcript,
             userResponse: {
                 url: audioAsDataUri,
-                contentType: mimeType
-            }
+                contentType: mimeType,
+            },
         };
 
         const response: InterviewResponse = await conductInterview(interviewState);
@@ -183,46 +183,38 @@ export default function InterviewPage() {
 
   return (
     <main className="container mx-auto p-4 md:p-8 flex flex-col items-center">
-      <Card className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="md:col-span-1 flex flex-col items-center justify-start bg-secondary rounded-lg p-6 space-y-6">
-            <div className="w-full max-w-sm">
-                <div className="relative w-full aspect-[3/4] rounded-lg overflow-hidden border-4 border-primary shadow-lg">
-                    <video 
-                        src="/idle.mp4" 
-                        autoPlay 
-                        loop 
-                        muted 
-                        playsInline
-                        className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-500 ${isSpeaking ? 'opacity-0' : 'opacity-100'}`}
-                        data-ai-hint="idle avatar"
-                    />
-                     <video 
-                        src="/talking.mp4" 
-                        autoPlay 
-                        loop 
-                        muted
-                        playsInline
-                        className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-500 ${isSpeaking ? 'opacity-100' : 'opacity-0'}`}
-                        data-ai-hint="talking avatar"
-                    />
+      <Card className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left Column: Video Feeds */}
+        <div className="md:col-span-1 flex items-center justify-center bg-secondary rounded-lg p-6">
+            <div className="relative w-full max-w-sm aspect-[9/16] rounded-lg overflow-hidden border-4 border-primary shadow-lg bg-black">
+                {/* AI Avatar */}
+                <video 
+                    src="/idle.mp4" 
+                    autoPlay loop muted playsInline
+                    className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-500 ${isSpeaking ? 'opacity-0' : 'opacity-100'}`}
+                    data-ai-hint="idle avatar"
+                />
+                <video 
+                    src="/talking.mp4" 
+                    autoPlay loop muted playsInline
+                    className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-500 ${isSpeaking ? 'opacity-100' : 'opacity-0'}`}
+                    data-ai-hint="talking avatar"
+                />
+                <p className="absolute top-2 left-2 text-white text-sm font-bold bg-black/50 px-2 py-1 rounded-md">AI Interviewer</p>
+                
+                {/* User Preview Overlay */}
+                <div className="absolute bottom-4 right-4 w-[35%] z-10">
+                    <video ref={videoRef} className="w-full aspect-[4/3] rounded-md bg-background shadow-md object-cover" autoPlay muted playsInline />
+                    {!hasCameraPermission && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-md">
+                            <p className="text-white text-xs text-center p-1">Enable camera to see preview</p>
+                        </div>
+                    )}
                 </div>
-                <p className="text-muted-foreground mt-2 text-center">AI Interviewer</p>
-            </div>
-            
-            <div className="w-full max-w-sm">
-                <video ref={videoRef} className="w-full aspect-video rounded-md bg-background" autoPlay muted playsInline />
-                {!hasCameraPermission && (
-                    <Alert variant="destructive" className="mt-2">
-                        <AlertTitle>Camera Access Required</AlertTitle>
-                        <AlertDescription>
-                        Please allow camera access to see your video preview.
-                        </AlertDescription>
-                    </Alert>
-                )}
-                <p className="text-muted-foreground mt-2 text-center">Your Preview</p>
             </div>
         </div>
 
+        {/* Right Column: Chat and Controls */}
         <div className="md:col-span-1 flex flex-col">
             <CardHeader>
                 <CardTitle className="font-headline text-3xl">AI Mock Interview</CardTitle>
