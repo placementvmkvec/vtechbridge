@@ -1,7 +1,4 @@
-
-'use server';
-
-import { z } from 'genkit';
+import { z } from 'zod';
 
 export const InterviewMessageSchema = z.object({
   role: z.enum(['user', 'model']),
