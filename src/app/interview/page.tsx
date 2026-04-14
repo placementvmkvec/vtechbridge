@@ -28,6 +28,33 @@ export default function InterviewPage() {
   const audioChunksRef = useRef<Blob[]>([]);
   const interviewStartedRef = useRef(false);
 
+  const [hasCameraPermission, setHasCameraPermission] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        setHasCameraPermission(true);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings to use this app.',
+        });
+      }
+    };
+
+    getCameraPermission();
+  }, [toast]);
+
+
   const speakText = (text: string) => {
     if (!window.speechSynthesis) {
         toast({
@@ -87,7 +114,6 @@ export default function InterviewPage() {
     try {
         const interviewState: InterviewState = {
             transcript: currentTranscriptWithUser,
-            userResponse: { url: audioAsDataUri, contentType: 'audio/webm' },
         };
 
         const response: InterviewResponse = await conductInterview(interviewState);
@@ -152,9 +178,9 @@ export default function InterviewPage() {
 
   return (
     <main className="container mx-auto p-4 md:p-8 flex flex-col items-center">
-      <Card className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6">
+      <Card className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="md:col-span-1 flex flex-col items-center justify-center bg-secondary rounded-lg p-6">
-            <div className="relative w-64 h-64 md:w-80 md:h-80 rounded-full overflow-hidden border-4 border-primary shadow-lg">
+            <div className="relative w-full aspect-[3/4] max-w-sm rounded-lg overflow-hidden border-4 border-primary shadow-lg">
                 <video 
                     src="/idle.mp4" 
                     autoPlay 
@@ -175,6 +201,19 @@ export default function InterviewPage() {
                 />
             </div>
             <p className="text-muted-foreground mt-4 text-center">AI Interviewer</p>
+            
+            <div className="w-full max-w-sm mt-6">
+                <video ref={videoRef} className="w-full aspect-video rounded-md bg-background" autoPlay muted playsInline />
+                {!hasCameraPermission && (
+                    <Alert variant="destructive" className="mt-2">
+                        <AlertTitle>Camera Access Required</AlertTitle>
+                        <AlertDescription>
+                        Please allow camera access to see your video preview.
+                        </AlertDescription>
+                    </Alert>
+                )}
+                <p className="text-muted-foreground mt-2 text-center">Your Preview</p>
+            </div>
         </div>
 
         <div className="md:col-span-1 flex flex-col">
