@@ -4,30 +4,52 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mic, Square, Bot, User as UserIcon, Loader2 } from 'lucide-react';
+import { Mic, Square, Bot, User as UserIcon, Loader2, LogOut, BookUser, RotateCw, ArrowRight } from 'lucide-react';
 import { conductInterview } from '@/ai/flows/interview-flow';
 import type { InterviewState, InterviewResponse } from '@/ai/schemas/interview-schemas';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import Markdown from 'react-markdown';
+import Link from 'next/link';
 
 type InterviewMessage = {
   role: 'user' | 'model';
   text: string;
 };
 
+const INTERVIEW_ROLES = [
+  {
+    title: 'Frontend Developer',
+    description: 'Focuses on UI/UX, React, CSS, and browser performance.',
+    icon: <BookUser className="h-8 w-8 text-primary" />,
+  },
+  {
+    title: 'Backend Developer',
+    description: 'Covers APIs, databases, system design, and server-side logic.',
+    icon: <BookUser className="h-8 w-8 text-primary" />,
+  },
+  {
+    title: 'Generalist',
+    description: 'A mix of general software engineering questions.',
+    icon: <BookUser className="h-8 w-8 text-primary" />,
+  },
+];
+
 export default function InterviewPage() {
   const { toast } = useToast();
+  
+  const [interviewStage, setInterviewStage] = useState<'selecting_role' | 'in_progress' | 'finished'>('selecting_role');
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+
   const [transcript, setTranscript] = useState<InterviewMessage[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [isAIProcessing, setIsAIProcessing] = useState(false);
-  const [isInterviewOver, setIsInterviewOver] = useState(false);
   const [finalFeedback, setFinalFeedback] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const interviewStartedRef = useRef(false);
-
+  
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -52,6 +74,10 @@ export default function InterviewPage() {
     };
 
     getCameraPermission();
+     // Cleanup on unmount
+    return () => {
+      window.speechSynthesis.cancel();
+    };
   }, [toast]);
 
 
@@ -82,28 +108,29 @@ export default function InterviewPage() {
     window.speechSynthesis.speak(utterance);
   };
 
-  useEffect(() => {
-    if (interviewStartedRef.current) return;
-    interviewStartedRef.current = true;
+  const startInterview = async (role: string) => {
+    setIsAIProcessing(true);
+    try {
+      const response: InterviewResponse = await conductInterview({ role, transcript: [] });
+      setTranscript([{ role: 'model', text: response.modelResponse }]);
+      speakText(response.modelResponse);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Could not start interview', description: error.message });
+      setIsAIProcessing(false);
+    }
+  };
 
-    const startInterview = async () => {
-      setIsAIProcessing(true);
-      try {
-        const response: InterviewResponse = await conductInterview({ transcript: [] });
-        setTranscript([{ role: 'model', text: response.modelResponse }]);
-        speakText(response.modelResponse);
-      } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Could not start interview', description: error.message });
-        setIsAIProcessing(false);
-      }
-    };
-    startInterview();
-     // Cleanup on unmount
-    return () => {
-      window.speechSynthesis.cancel();
-    };
+  useEffect(() => {
+    if (interviewStage === 'in_progress' && selectedRole && transcript.length === 0) {
+        startInterview(selectedRole);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [interviewStage, selectedRole]);
+  
+  const handleSelectRole = (role: string) => {
+    setSelectedRole(role);
+    setInterviewStage('in_progress');
+  }
 
   const handleUserResponse = async (audioAsDataUri: string, mimeType: string) => {
     setIsAIProcessing(true);
@@ -113,6 +140,7 @@ export default function InterviewPage() {
     
     try {
         const interviewState: InterviewState = {
+            role: selectedRole!,
             transcript: transcript,
             userResponse: {
                 url: audioAsDataUri,
@@ -123,11 +151,12 @@ export default function InterviewPage() {
         const response: InterviewResponse = await conductInterview(interviewState);
         const modelMessage = { role: 'model' as const, text: response.modelResponse };
         setTranscript(prev => [...prev, modelMessage]);
-        speakText(response.modelResponse);
         
         if (response.isInterviewOver) {
-            setIsInterviewOver(true);
-            setFinalFeedback(response.feedback || "The interview is now complete. Thank you for your time!");
+            setFinalFeedback(response.finalFeedback || "The interview is now complete. Thank you for your time!");
+            setInterviewStage('finished');
+        } else {
+             speakText(response.modelResponse);
         }
 
     } catch (error: any) {
@@ -136,6 +165,35 @@ export default function InterviewPage() {
         setTranscript(transcript); // Revert to transcript without user message
         setIsAIProcessing(false);
     }
+  }
+
+  const handleEndInterview = async () => {
+    if (!selectedRole) return;
+    setIsAIProcessing(true);
+    toast({ title: "Ending Interview...", description: "Generating your final feedback."});
+    try {
+         const interviewState: InterviewState = {
+            role: selectedRole,
+            transcript: transcript,
+            endInterview: true,
+        };
+        const response: InterviewResponse = await conductInterview(interviewState);
+        setFinalFeedback(response.finalFeedback || "The interview is now complete. Thank you for your time!");
+        setInterviewStage('finished');
+    } catch(error: any) {
+        toast({ variant: 'destructive', title: "Error", description: "Could not generate final feedback."});
+    } finally {
+        setIsAIProcessing(false);
+    }
+  }
+  
+  const handleTryAgain = () => {
+    setInterviewStage('selecting_role');
+    setSelectedRole(null);
+    setTranscript([]);
+    setFinalFeedback(null);
+    setIsSpeaking(false);
+    setIsAIProcessing(false);
   }
 
   const startRecording = async () => {
@@ -181,13 +239,65 @@ export default function InterviewPage() {
     else startRecording();
   };
 
+  if (interviewStage === 'selecting_role') {
+    return (
+      <main className="container mx-auto p-4 md:p-8 flex flex-col items-center justify-center">
+        <Card className="w-full max-w-4xl text-center">
+          <CardHeader>
+            <CardTitle className="font-headline text-3xl">Select Your Interview Type</CardTitle>
+            <CardDescription>Choose a role to tailor the questions for your mock interview.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {INTERVIEW_ROLES.map(role => (
+              <Card key={role.title} className="hover:shadow-lg hover:border-primary transition-all cursor-pointer" onClick={() => handleSelectRole(role.title)}>
+                <CardHeader className="items-center">{role.icon}</CardHeader>
+                <CardContent>
+                  <h3 className="font-bold">{role.title}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{role.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
+  if (interviewStage === 'finished') {
+    return (
+       <main className="container mx-auto p-4 md:p-8 flex flex-col items-center justify-center">
+          <Card className="w-full max-w-4xl">
+            <CardHeader>
+                <CardTitle className="font-headline text-3xl">Interview Complete</CardTitle>
+                <CardDescription>Here is the feedback on your performance for the {selectedRole} role.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="prose dark:prose-invert max-w-none bg-secondary p-4 rounded-lg">
+                <Markdown>{finalFeedback}</Markdown>
+              </div>
+            </CardContent>
+            <CardFooter className="gap-4">
+               <Button onClick={handleTryAgain}>
+                    <RotateCw className="mr-2 h-4 w-4"/>
+                    Try Another Role
+               </Button>
+               <Link href="/dashboard">
+                <Button variant="outline">
+                    <ArrowRight className="mr-2 h-4 w-4"/>
+                    Back to Dashboard
+                </Button>
+               </Link>
+            </CardFooter>
+          </Card>
+       </main>
+    );
+  }
+
   return (
     <main className="container mx-auto p-4 md:p-8 flex flex-col items-center">
       <Card className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left Column: Video Feeds */}
         <div className="md:col-span-1 flex items-center justify-center bg-secondary rounded-lg p-6">
-            <div className="relative w-full max-w-sm aspect-[9/16] rounded-lg overflow-hidden border-4 border-primary shadow-lg bg-black">
-                {/* AI Avatar */}
+            <div className="relative w-full max-w-sm aspect-[4/5] rounded-lg overflow-hidden border-4 border-primary shadow-lg bg-black">
                 <video 
                     src="/idle.mp4" 
                     autoPlay loop muted playsInline
@@ -202,7 +312,6 @@ export default function InterviewPage() {
                 />
                 <p className="absolute top-2 left-2 text-white text-sm font-bold bg-black/50 px-2 py-1 rounded-md">AI Interviewer</p>
                 
-                {/* User Preview Overlay */}
                 <div className="absolute bottom-4 right-4 w-2/5 z-10">
                     <video ref={videoRef} className="w-full aspect-[4/3] rounded-md bg-background shadow-md object-cover" autoPlay muted playsInline />
                     {!hasCameraPermission && (
@@ -214,11 +323,10 @@ export default function InterviewPage() {
             </div>
         </div>
 
-        {/* Right Column: Chat and Controls */}
         <div className="md:col-span-1 flex flex-col">
             <CardHeader>
                 <CardTitle className="font-headline text-3xl">AI Mock Interview</CardTitle>
-                <CardDescription>Practice your technical interview skills. Press record to answer.</CardDescription>
+                <CardDescription>Role: <span className="font-bold text-primary">{selectedRole}</span>. Press record to answer.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow flex flex-col space-y-6">
             <div className="h-96 space-y-4 overflow-y-auto rounded-lg border p-4 bg-secondary flex-grow">
@@ -248,21 +356,16 @@ export default function InterviewPage() {
             </div>
 
             <div className="flex flex-col items-center justify-center gap-4 pt-4">
-                <Button onClick={toggleRecording} size="lg" disabled={isAIProcessing || isInterviewOver || transcript.length === 0}>
+                <Button onClick={toggleRecording} size="lg" disabled={isAIProcessing || transcript.length === 0}>
                 {isRecording ? ( <> <Square className="mr-2 h-5 w-5" /> Stop Recording </> ) 
                              : ( <> <Mic className="mr-2 h-5 w-5" /> Record Answer </> )}
                 </Button>
                 {isRecording && <p className="text-sm text-muted-foreground animate-pulse">Recording... speak now.</p>}
+                 <Button onClick={handleEndInterview} size="sm" variant="outline" disabled={isAIProcessing || transcript.length === 0}>
+                     <LogOut className="mr-2 h-4 w-4"/>
+                     End Interview & Get Feedback
+                 </Button>
             </div>
-
-            {isInterviewOver && finalFeedback && (
-                <Alert className="mt-4">
-                    <AlertTitle className="font-bold">Interview Complete</AlertTitle>
-                    <AlertDescription>
-                        {finalFeedback}
-                    </AlertDescription>
-                </Alert>
-            )}
             </CardContent>
         </div>
       </Card>
