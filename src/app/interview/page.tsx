@@ -105,7 +105,7 @@ export default function InterviewPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleUserResponse = async (audioAsDataUri: string) => {
+  const handleUserResponse = async (audioAsDataUri: string, mimeType: string) => {
     setIsAIProcessing(true);
     const userMessage = { role: 'user' as const, text: '(Spoken response)' };
     const currentTranscriptWithUser = [...transcript, userMessage];
@@ -114,6 +114,10 @@ export default function InterviewPage() {
     try {
         const interviewState: InterviewState = {
             transcript: currentTranscriptWithUser,
+            userResponse: {
+                url: audioAsDataUri,
+                contentType: mimeType
+            }
         };
 
         const response: InterviewResponse = await conductInterview(interviewState);
@@ -137,18 +141,19 @@ export default function InterviewPage() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const mimeType = 'audio/webm';
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
       audioChunksRef.current = [];
       mediaRecorderRef.current.ondataavailable = (event) => {
         audioChunksRef.current.push(event.data);
       };
       mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         const reader = new FileReader();
         reader.readAsDataURL(audioBlob);
         reader.onloadend = () => {
           const base64Audio = reader.result as string;
-          handleUserResponse(base64Audio);
+          handleUserResponse(base64Audio, mimeType);
         };
         stream.getTracks().forEach(track => track.stop());
       };
@@ -179,30 +184,32 @@ export default function InterviewPage() {
   return (
     <main className="container mx-auto p-4 md:p-8 flex flex-col items-center">
       <Card className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="md:col-span-1 flex flex-col items-center justify-center bg-secondary rounded-lg p-6">
-            <div className="relative w-full aspect-[3/4] max-w-sm rounded-lg overflow-hidden border-4 border-primary shadow-lg">
-                <video 
-                    src="/idle.mp4" 
-                    autoPlay 
-                    loop 
-                    muted 
-                    playsInline
-                    className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-500 ${isSpeaking ? 'opacity-0' : 'opacity-100'}`}
-                    data-ai-hint="idle avatar"
-                />
-                 <video 
-                    src="/talking.mp4" 
-                    autoPlay 
-                    loop 
-                    muted
-                    playsInline
-                    className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-500 ${isSpeaking ? 'opacity-100' : 'opacity-0'}`}
-                    data-ai-hint="talking avatar"
-                />
+        <div className="md:col-span-1 flex flex-col items-center justify-start bg-secondary rounded-lg p-6 space-y-6">
+            <div className="w-full max-w-sm">
+                <div className="relative w-full aspect-[3/4] rounded-lg overflow-hidden border-4 border-primary shadow-lg">
+                    <video 
+                        src="/idle.mp4" 
+                        autoPlay 
+                        loop 
+                        muted 
+                        playsInline
+                        className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-500 ${isSpeaking ? 'opacity-0' : 'opacity-100'}`}
+                        data-ai-hint="idle avatar"
+                    />
+                     <video 
+                        src="/talking.mp4" 
+                        autoPlay 
+                        loop 
+                        muted
+                        playsInline
+                        className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-500 ${isSpeaking ? 'opacity-100' : 'opacity-0'}`}
+                        data-ai-hint="talking avatar"
+                    />
+                </div>
+                <p className="text-muted-foreground mt-2 text-center">AI Interviewer</p>
             </div>
-            <p className="text-muted-foreground mt-4 text-center">AI Interviewer</p>
             
-            <div className="w-full max-w-sm mt-6">
+            <div className="w-full max-w-sm">
                 <video ref={videoRef} className="w-full aspect-video rounded-md bg-background" autoPlay muted playsInline />
                 {!hasCameraPermission && (
                     <Alert variant="destructive" className="mt-2">
