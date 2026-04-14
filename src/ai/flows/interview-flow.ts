@@ -2,55 +2,17 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
-import { googleAI } from '@genkit-ai/googleai';
-import { z } from 'zod';
 import {
   InterviewStateSchema,
   InterviewResponseSchema,
   InterviewState,
   InterviewResponse,
 } from '@/ai/schemas/interview-schemas';
-import wav from 'wav';
-
-async function toWav(
-  pcmData: Buffer,
-  channels = 1,
-  rate = 24000,
-  sampleWidth = 2
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const writer = new wav.Writer({
-      channels,
-      sampleRate: rate,
-      bitDepth: sampleWidth * 8,
-    });
-
-    const bufs: Buffer[] = [];
-    writer.on('error', reject);
-    writer.on('data', (d) => {
-      bufs.push(d);
-    });
-    writer.on('end', () => {
-      resolve(Buffer.concat(bufs).toString('base64'));
-    });
-
-    writer.write(pcmData);
-    writer.end();
-  });
-}
-
-// A schema just for the text-generation part of the interview.
-const InterviewTextResponseSchema = z.object({
-  modelResponse: z.string().describe("The AI interviewer's response or next question."),
-  isInterviewOver: z.boolean().describe('A flag to indicate if the interview has concluded.'),
-  feedback: z.string().optional().describe('Final feedback for the user if the interview is over.'),
-});
-
 
 const interviewPrompt = ai.definePrompt({
   name: 'interviewPrompt',
   input: { schema: InterviewStateSchema },
-  output: { schema: InterviewTextResponseSchema },
+  output: { schema: InterviewResponseSchema },
   prompt: `You are an expert technical interviewer for a software engineering position. Your goal is to conduct a friendly but thorough interview based on a spoken conversation.
 
   - Start with a greeting and a simple "Tell me about yourself" question if the transcript is empty.
@@ -79,39 +41,11 @@ const interviewFlow = ai.defineFlow(
     outputSchema: InterviewResponseSchema,
   },
   async (state: InterviewState): Promise<InterviewResponse> => {
-    // 1. Generate the text response from the interviewer AI
-    const { output: textOutput } = await interviewPrompt(state);
-
-    if (!textOutput?.modelResponse) {
+    const { output } = await interviewPrompt(state);
+    if (!output) {
         throw new Error("Failed to generate a text response from the AI.");
     }
-    
-    // 2. Convert the AI's text response to speech
-    const { media } = await ai.generate({
-      model: googleAI.model('gemini-2.5-flash-preview-tts'),
-      config: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Algenib' },
-          },
-        },
-      },
-      prompt: textOutput.modelResponse,
-    });
-
-    if (!media?.url) {
-      throw new Error('Failed to generate audio from the text response.');
-    }
-
-    const pcmData = Buffer.from(media.url.substring(media.url.indexOf(',') + 1), 'base64');
-    const wavData = await toWav(pcmData);
-
-    // 3. Combine the text output with the generated audio URI
-    return {
-      ...textOutput,
-      audioDataUri: 'data:audio/wav;base64,' + wavData,
-    };
+    return output;
   }
 );
 
