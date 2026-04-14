@@ -66,7 +66,9 @@ const interviewPrompt = ai.definePrompt({
   {{/each}}
 
   Analyze the user's latest spoken response and generate your next question or concluding feedback.
-  User's latest response (audio): {{media url=userResponse}}
+  {{#if userResponse}}
+  User's latest response (audio): {{media url=userResponse.url contentType=userResponse.contentType}}
+  {{/if}}
   `,
 });
 

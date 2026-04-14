@@ -55,7 +55,10 @@ export default function InterviewPage() {
     try {
         const interviewState: InterviewState = {
             transcript: newTranscript,
-            userResponse: audioAsDataUri,
+            userResponse: {
+                url: audioAsDataUri,
+                contentType: 'audio/webm'
+            },
         };
 
         const response: InterviewResponse = await conductInterview(interviewState);
@@ -89,7 +92,7 @@ export default function InterviewPage() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       audioChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {

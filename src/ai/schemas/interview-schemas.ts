@@ -7,12 +7,13 @@ export const InterviewMessageSchema = z.object({
 
 export const InterviewStateSchema = z.object({
   transcript: z.array(InterviewMessageSchema),
-  userResponse: z
-    .string()
-    .optional()
-    .describe(
-      "The user's latest spoken response, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-    ),
+  userResponse: z.object({
+    url: z.string()
+      .describe(
+        "The user's latest spoken response, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      ),
+    contentType: z.string().describe("The MIME type of the audio, e.g., 'audio/webm'"),
+  }).optional(),
 });
 
 export type InterviewState = z.infer<typeof InterviewStateSchema>;
