@@ -9,11 +9,11 @@ import {
   InterviewResponse,
 } from '@/ai/schemas/interview-schemas';
 
-const interviewPrompt = ai.definePrompt({
-  name: 'interviewPrompt',
-  input: { schema: InterviewStateSchema },
-  output: { schema: InterviewResponseSchema },
-  prompt: `You are an expert technical interviewer for a {{role}} software engineering position. Your goal is to conduct a friendly but thorough interview.
+const modelsToTry = [
+  'googleai/gemini-1.5-flash-latest',
+];
+
+const interviewPromptText = `You are an expert technical interviewer for a {{role}} software engineering position. Your goal is to conduct a friendly but thorough interview.
 
   - Start with a greeting and a simple "Tell me about yourself" question if the transcript is empty.
   - Ask a mix of behavioral and technical questions relevant to the {{role}} position.
@@ -40,8 +40,40 @@ const interviewPrompt = ai.definePrompt({
   {{#if endInterview}}
   The user has requested to end the interview. Conclude it now and provide final feedback.
   {{/if}}
-  `,
-});
+  `;
+
+
+async function runInterviewPromptWithFallback(state: InterviewState): Promise<InterviewResponse> {
+    let lastError: any = null;
+
+    for (const modelName of modelsToTry) {
+        try {
+            console.log(`Attempting to use model: ${modelName}`);
+            const interviewPrompt = ai.definePrompt({
+                name: `interviewPrompt_${modelName.replace(/[^a-zA-Z0-9]/g, '_')}`, // Create a unique name for the prompt
+                model: modelName,
+                input: { schema: InterviewStateSchema },
+                output: { schema: InterviewResponseSchema },
+                prompt: interviewPromptText,
+            });
+
+            const { output } = await interviewPrompt(state);
+            
+            if (!output) {
+                throw new Error("Model returned empty output.");
+            }
+            console.log(`Successfully received response from ${modelName}`);
+            return output; // Success
+        } catch (error) {
+            console.warn(`Model ${modelName} failed:`, error);
+            lastError = error; // Store error and try next model
+        }
+    }
+
+    // If the loop completes, all models failed
+    throw new Error(`All LLM providers failed. Last error: ${lastError?.message}`);
+}
+
 
 const interviewFlow = ai.defineFlow(
   {
@@ -50,11 +82,7 @@ const interviewFlow = ai.defineFlow(
     outputSchema: InterviewResponseSchema,
   },
   async (state: InterviewState): Promise<InterviewResponse> => {
-    const { output } = await interviewPrompt(state);
-    if (!output) {
-        throw new Error("Failed to generate a text response from the AI.");
-    }
-    return output;
+    return runInterviewPromptWithFallback(state);
   }
 );
 
