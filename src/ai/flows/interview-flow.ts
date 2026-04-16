@@ -10,7 +10,8 @@ import {
 } from '@/ai/schemas/interview-schemas';
 
 const modelsToTry = [
-  'googleai/gemini-1.5-flash-latest',
+  'googleai/gemini-2.5-flash',
+  'googleai/gemini-3-flash-preview'
 ];
 
 const interviewPromptText = `You are an expert technical interviewer for a {{role}} software engineering position. Your goal is to conduct a friendly but thorough interview.
